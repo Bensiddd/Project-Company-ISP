@@ -1,51 +1,58 @@
+import 'dotenv/config';
 import db from './db.js';
 
 const sqls = [
-  `CREATE TABLE IF NOT EXISTS coverage_areas (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(100) NOT NULL, description TEXT, is_active BOOLEAN DEFAULT 1, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
-  `CREATE TABLE IF NOT EXISTS service_packages (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(100) NOT NULL, description TEXT, type VARCHAR(50) DEFAULT 'monthly', price DECIMAL(10,2) DEFAULT 0, bandwidth VARCHAR(50), features TEXT DEFAULT '[]', is_active BOOLEAN DEFAULT 1, popular BOOLEAN DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
-  `CREATE TABLE IF NOT EXISTS website_settings (id INTEGER PRIMARY KEY AUTOINCREMENT, company_name VARCHAR(100), tagline VARCHAR(150), description TEXT, address TEXT, phone VARCHAR(20), email VARCHAR(100), logo_url VARCHAR(255), favicon_url VARCHAR(255), facebook_url VARCHAR(255), twitter_url VARCHAR(255), instagram_url VARCHAR(255), linkedin_url VARCHAR(255), youtube_url VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
-  `CREATE TABLE IF NOT EXISTS admin_users (id INTEGER PRIMARY KEY AUTOINCREMENT, username VARCHAR(50) UNIQUE NOT NULL, password_hash VARCHAR(255) NOT NULL, email VARCHAR(100) UNIQUE NOT NULL, full_name VARCHAR(100), role VARCHAR(20) DEFAULT 'admin', is_active BOOLEAN DEFAULT 1, last_login TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
-  `CREATE TABLE IF NOT EXISTS clients (id INTEGER PRIMARY KEY AUTOINCREMENT, company_name VARCHAR(100) NOT NULL, contact_person VARCHAR(100), email VARCHAR(100), phone VARCHAR(20), address TEXT, website VARCHAR(255), logo_url VARCHAR(255), industry VARCHAR(50), is_active BOOLEAN DEFAULT 1, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
-  `CREATE TABLE IF NOT EXISTS testimonials (id INTEGER PRIMARY KEY AUTOINCREMENT, client_id INTEGER REFERENCES clients(id) ON DELETE SET NULL, author_name VARCHAR(100) NOT NULL, author_position VARCHAR(100), content TEXT NOT NULL, rating INTEGER CHECK(rating >= 1 AND rating <= 5), is_approved BOOLEAN DEFAULT 0, published_at TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
-  `CREATE TABLE IF NOT EXISTS blog_posts (id INTEGER PRIMARY KEY AUTOINCREMENT, title VARCHAR(200) NOT NULL, slug VARCHAR(200) UNIQUE NOT NULL, excerpt TEXT, content TEXT, category VARCHAR(100), author_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL, status VARCHAR(20) DEFAULT 'draft', published_at TIMESTAMP, featured_image_url VARCHAR(255), meta_description VARCHAR(255), read_time VARCHAR(20), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
-  `CREATE TABLE IF NOT EXISTS contact_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(100) NOT NULL, email VARCHAR(100) NOT NULL, phone VARCHAR(20), whatsapp VARCHAR(20), subject VARCHAR(150), message TEXT NOT NULL, status VARCHAR(20) DEFAULT 'unread', assigned_to INTEGER REFERENCES admin_users(id) ON DELETE SET NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
-  `CREATE TABLE IF NOT EXISTS telegram_bots (id INTEGER PRIMARY KEY AUTOINCREMENT, name VARCHAR(100) NOT NULL, bot_token VARCHAR(255) NOT NULL, admin_chat_id VARCHAR(100), is_active BOOLEAN DEFAULT 1, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
-  `CREATE TABLE IF NOT EXISTS tickets (id INTEGER PRIMARY KEY AUTOINCREMENT, contact_message_id INTEGER REFERENCES contact_messages(id) ON DELETE SET NULL, type VARCHAR(50) NOT NULL DEFAULT 'maintenance', status VARCHAR(20) DEFAULT 'open' CHECK(status IN ('open', 'in_progress', 'resolved', 'closed')), priority VARCHAR(20) DEFAULT 'checking' CHECK(priority IN ('low', 'medium', 'high', 'checking')), title VARCHAR(200) NOT NULL, description TEXT, assigned_to INTEGER REFERENCES admin_users(id) ON DELETE SET NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
-  `CREATE TABLE IF NOT EXISTS ticket_replies (id INTEGER PRIMARY KEY AUTOINCREMENT, ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE, admin_id INTEGER REFERENCES admin_users(id) ON DELETE SET NULL, message TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
-  `CREATE TABLE IF NOT EXISTS telegram_conversations (id INTEGER PRIMARY KEY AUTOINCREMENT, bot_id INTEGER, chat_id TEXT NOT NULL, user_name TEXT DEFAULT '', last_message TEXT DEFAULT '', status TEXT DEFAULT 'ai', unread INTEGER DEFAULT 0, telegram_username TEXT DEFAULT '', user_phone TEXT DEFAULT '', created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)`,
-  `CREATE TABLE IF NOT EXISTS telegram_messages (id INTEGER PRIMARY KEY AUTOINCREMENT, conversation_id INTEGER, bot_id INTEGER, chat_id TEXT NOT NULL, role TEXT NOT NULL, message TEXT NOT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP)`,
-  `CREATE TABLE IF NOT EXISTS mikrotik_settings (id INTEGER PRIMARY KEY AUTOINCREMENT, host VARCHAR(100) NOT NULL DEFAULT '', username VARCHAR(100) NOT NULL DEFAULT '', password TEXT NOT NULL DEFAULT '', port INTEGER DEFAULT 8728, is_active BOOLEAN DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
-  `CREATE TABLE IF NOT EXISTS traffic_history (id INTEGER PRIMARY KEY AUTOINCREMENT, interface VARCHAR(100) NOT NULL, rx BIGINT DEFAULT 0, tx BIGINT DEFAULT 0, sampled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`,
-  `CREATE TABLE IF NOT EXISTS activity_logs (id INTEGER PRIMARY KEY AUTOINCREMENT, type VARCHAR(50) NOT NULL, action VARCHAR(200) NOT NULL, detail TEXT DEFAULT '', user_id INTEGER, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)`
+  `CREATE TABLE IF NOT EXISTS coverage_areas (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL, description TEXT, is_active TINYINT(1) DEFAULT 1, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS service_packages (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL, description TEXT, type VARCHAR(50) DEFAULT 'monthly', price DECIMAL(10,2) DEFAULT 0, bandwidth VARCHAR(50), features TEXT, is_active TINYINT(1) DEFAULT 1, popular TINYINT(1) DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS website_settings (id INT AUTO_INCREMENT PRIMARY KEY, company_name VARCHAR(100), tagline VARCHAR(150), description TEXT, address TEXT, phone VARCHAR(20), email VARCHAR(100), logo_url VARCHAR(255), favicon_url VARCHAR(255), facebook_url VARCHAR(255), twitter_url VARCHAR(255), instagram_url VARCHAR(255), linkedin_url VARCHAR(255), youtube_url VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS admin_users (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(50) UNIQUE NOT NULL, password_hash VARCHAR(255) NOT NULL, email VARCHAR(100) UNIQUE NOT NULL, full_name VARCHAR(100), role VARCHAR(20) DEFAULT 'admin', is_active TINYINT(1) DEFAULT 1, last_login TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS clients (id INT AUTO_INCREMENT PRIMARY KEY, company_name VARCHAR(100) NOT NULL, contact_person VARCHAR(100), email VARCHAR(100), phone VARCHAR(20), address TEXT, website VARCHAR(255), logo_url VARCHAR(255), industry VARCHAR(50), is_active TINYINT(1) DEFAULT 1, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS testimonials (id INT AUTO_INCREMENT PRIMARY KEY, client_id INT, author_name VARCHAR(100) NOT NULL, author_position VARCHAR(100), content TEXT NOT NULL, rating INT CHECK(rating >= 1 AND rating <= 5), is_approved TINYINT(1) DEFAULT 0, published_at TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS blog_posts (id INT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(200) NOT NULL, slug VARCHAR(200) UNIQUE NOT NULL, excerpt TEXT, content TEXT, category VARCHAR(100), author_id INT, status VARCHAR(20) DEFAULT 'draft', published_at TIMESTAMP, featured_image_url VARCHAR(255), meta_description VARCHAR(255), read_time VARCHAR(20), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (author_id) REFERENCES admin_users(id) ON DELETE SET NULL) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS contact_messages (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL, email VARCHAR(100) NOT NULL, phone VARCHAR(20), whatsapp VARCHAR(20), telegram_chat_id VARCHAR(100), subject VARCHAR(150), message TEXT NOT NULL, status VARCHAR(20) DEFAULT 'unread', assigned_to INT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (assigned_to) REFERENCES admin_users(id) ON DELETE SET NULL) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS telegram_bots (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL, bot_token VARCHAR(255) NOT NULL, admin_chat_id VARCHAR(100), is_active TINYINT(1) DEFAULT 1, role VARCHAR(20) DEFAULT 'admin', ai_enabled TINYINT(1) DEFAULT 0, ai_provider VARCHAR(50), ai_model VARCHAR(100), ai_api_key VARCHAR(255), ai_url VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS tickets (id INT AUTO_INCREMENT PRIMARY KEY, contact_message_id INT, telegram_conversation_id INT, type VARCHAR(50) NOT NULL DEFAULT 'maintenance', status VARCHAR(20) DEFAULT 'open' CHECK(status IN ('open', 'in_progress', 'resolved', 'closed')), priority VARCHAR(20) DEFAULT 'checking' CHECK(priority IN ('low', 'medium', 'high', 'checking')), title VARCHAR(200) NOT NULL, description TEXT, assigned_to INT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (contact_message_id) REFERENCES contact_messages(id) ON DELETE SET NULL, FOREIGN KEY (assigned_to) REFERENCES admin_users(id) ON DELETE SET NULL) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS ticket_replies (id INT AUTO_INCREMENT PRIMARY KEY, ticket_id INT NOT NULL, admin_id INT, message TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE, FOREIGN KEY (admin_id) REFERENCES admin_users(id) ON DELETE SET NULL) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS telegram_conversations (id INT AUTO_INCREMENT PRIMARY KEY, bot_id INT, chat_id TEXT NOT NULL, user_name TEXT, last_message TEXT, status VARCHAR(20) DEFAULT 'ai', unread INT DEFAULT 0, telegram_username TEXT, user_phone TEXT, state VARCHAR(50) DEFAULT 'idle', pending_data TEXT, cooldown_until TIMESTAMP NULL DEFAULT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE INDEX idx_telegram_convs_unique (bot_id, chat_id(100))) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS telegram_messages (id INT AUTO_INCREMENT PRIMARY KEY, conversation_id INT, bot_id INT, chat_id TEXT NOT NULL, role TEXT NOT NULL, message TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS mikrotik_settings (id INT AUTO_INCREMENT PRIMARY KEY, host VARCHAR(100) NOT NULL DEFAULT '', username VARCHAR(100) NOT NULL DEFAULT '', password VARCHAR(500) NOT NULL DEFAULT '', port INT DEFAULT 8728, is_active TINYINT(1) DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS traffic_history (id INT AUTO_INCREMENT PRIMARY KEY, interface VARCHAR(100) NOT NULL, rx BIGINT DEFAULT 0, tx BIGINT DEFAULT 0, sampled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS activity_logs (id INT AUTO_INCREMENT PRIMARY KEY, type VARCHAR(50) NOT NULL, action VARCHAR(200) NOT NULL, detail TEXT, user_id INT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB`
 ];
 
-db.init().then(() => {
-  console.log('Running migrations...');
-  sqls.forEach(sql => db.exec(sql));
+await db.init();
+console.log('Running migrations...');
+for (const sql of sqls) {
+  await db.run(sql);
+}
 
-  // Add whatsapp and telegram_chat_id columns if not exists (safe for existing DBs)
-  try { db.run('ALTER TABLE contact_messages ADD COLUMN whatsapp VARCHAR(20)'); } catch (e) {}
-  try { db.run('ALTER TABLE contact_messages ADD COLUMN telegram_chat_id VARCHAR(100)'); } catch (e) {}
-  // Add bot role columns
-  try { db.run("ALTER TABLE telegram_bots ADD COLUMN role VARCHAR(20) DEFAULT 'admin'"); } catch (e) {}
-  try { db.run('ALTER TABLE telegram_bots ADD COLUMN ai_provider VARCHAR(50)'); } catch (e) {}
-  try { db.run('ALTER TABLE telegram_bots ADD COLUMN ai_model VARCHAR(100)'); } catch (e) {}
-  try { db.run('ALTER TABLE telegram_bots ADD COLUMN ai_api_key VARCHAR(255)'); } catch (e) {}
-  try { db.run('ALTER TABLE telegram_bots ADD COLUMN ai_url VARCHAR(255)'); } catch (e) {}
-  // Add state machine columns for telegram conversations
-  try { db.run("ALTER TABLE telegram_conversations ADD COLUMN state TEXT DEFAULT 'idle'"); } catch (e) {}
-  try { db.run('ALTER TABLE telegram_conversations ADD COLUMN pending_data TEXT DEFAULT ""'); } catch (e) {}
-  // Migration: remove CHECK constraint on tickets.type to allow 'request' (SQLite cannot ALTER CHECK)
-  try { db.exec("CREATE TABLE tickets_new (id INTEGER PRIMARY KEY AUTOINCREMENT, contact_message_id INTEGER REFERENCES contact_messages(id) ON DELETE SET NULL, type VARCHAR(50) NOT NULL DEFAULT 'maintenance', status VARCHAR(20) DEFAULT 'open' CHECK(status IN ('open', 'in_progress', 'resolved', 'closed')), priority VARCHAR(20) DEFAULT 'checking' CHECK(priority IN ('low', 'medium', 'high', 'checking')), title VARCHAR(200) NOT NULL, description TEXT, assigned_to INTEGER REFERENCES admin_users(id) ON DELETE SET NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)"); db.exec("INSERT INTO tickets_new SELECT * FROM tickets"); db.exec("DROP TABLE tickets"); db.exec("ALTER TABLE tickets_new RENAME TO tickets"); } catch (e) {}
+// Add ai_enabled column if it doesn't exist (MySQL 8 compatible)
+try {
+  await db.run('ALTER TABLE telegram_bots ADD COLUMN ai_enabled TINYINT(1) DEFAULT 0 AFTER role');
+} catch (e) {
+  if (!e.message.includes('Duplicate column')) console.error('Migration note:', e.message);
+}
 
-  // Clean up duplicate conversations before adding unique index
-  try { db.exec("DELETE FROM telegram_conversations WHERE id NOT IN (SELECT MIN(id) FROM telegram_conversations GROUP BY bot_id, chat_id)"); } catch (e) {}
-  // Unique index to prevent duplicate telegram conversations for same bot+user
-  try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_telegram_convs_unique ON telegram_conversations(bot_id, chat_id)'); } catch (e) {}
+// Resize state column in telegram_conversations (VARCHAR(20) → VARCHAR(50))
+try {
+  await db.run('ALTER TABLE telegram_conversations MODIFY COLUMN state VARCHAR(50) DEFAULT \'idle\'');
+} catch (e) {
+  if (!e.message.includes('Duplicate')) console.error('Migration note:', e.message);
+}
 
-  // Add index for traffic_history queries
-  try { db.exec('CREATE INDEX IF NOT EXISTS idx_traffic_history_lookup ON traffic_history(interface, sampled_at)'); } catch (e) {}
+// Add cooldown_until column if not exists
+try {
+  await db.run('ALTER TABLE telegram_conversations ADD COLUMN cooldown_until TIMESTAMP NULL DEFAULT NULL AFTER pending_data');
+} catch (e) {
+  if (!e.message.includes('Duplicate column')) console.error('Migration note:', e.message);
+}
 
-  console.log('All tables created successfully.');
-  process.exit(0);
-});
+// Add telegram_conversation_id column to tickets if not exists
+try {
+  await db.run('ALTER TABLE tickets ADD COLUMN telegram_conversation_id INT NULL AFTER contact_message_id');
+} catch (e) {
+  if (!e.message.includes('Duplicate column')) console.error('Migration note:', e.message);
+}
+
+console.log('All tables created successfully.');
+process.exit(0);

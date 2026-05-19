@@ -1,87 +1,51 @@
-import initSqlJs from 'sql.js';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import mysql from 'mysql2/promise';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DB_PATH = path.join(__dirname, 'data', 'database.sqlite');
-
-let _db = null;
-let _SQL = null;
-
-function save() {
-  const data = _db.export();
-  const dir = path.dirname(DB_PATH);
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  fs.writeFileSync(DB_PATH, Buffer.from(data));
-}
-
-function paramArr(params) {
-  return params.length === 1 && Array.isArray(params[0]) ? params[0] : params;
-}
+let pool;
 
 const api = {
   async init() {
-    _SQL = await initSqlJs();
-    if (fs.existsSync(DB_PATH)) {
-      _db = new _SQL.Database(fs.readFileSync(DB_PATH));
-    } else {
-      _db = new _SQL.Database();
-      const dir = path.dirname(DB_PATH);
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    }
-    _db.run('PRAGMA foreign_keys = ON');
+    pool = mysql.createPool({
+      host: process.env.DB_HOST || 'localhost',
+      user: process.env.DB_USER || 'root',
+      password: process.env.DB_PASSWORD || '',
+      database: process.env.DB_NAME || 'maznet',
+      port: parseInt(process.env.DB_PORT || '3306'),
+      waitForConnections: true,
+      connectionLimit: 10,
+      queueLimit: 0
+    });
+    await pool.execute('SET FOREIGN_KEY_CHECKS = 1');
   },
 
-  run(sql, params = []) {
-    _db.run(sql, params);
-    save();
+  async run(sql, params = []) {
+    await pool.execute(sql, params);
   },
 
-  get(sql, params = []) {
-    const stmt = _db.prepare(sql);
-    stmt.bind(paramArr([params]));
-    let row = null;
-    if (stmt.step()) {
-      const cols = stmt.getColumnNames();
-      const vals = stmt.get();
-      row = {};
-      cols.forEach((c, i) => { row[c] = vals[i]; });
-    }
-    stmt.free();
-    return row;
+  async get(sql, params = []) {
+    const [rows] = await pool.execute(sql, params);
+    return rows[0] || null;
   },
 
-  all(sql, params = []) {
-    const stmt = _db.prepare(sql);
-    stmt.bind(paramArr([params]));
-    const rows = [];
-    while (stmt.step()) {
-      const cols = stmt.getColumnNames();
-      const vals = stmt.get();
-      const row = {};
-      cols.forEach((c, i) => { row[c] = vals[i]; });
-      rows.push(row);
-    }
-    stmt.free();
+  async all(sql, params = []) {
+    const [rows] = await pool.execute(sql, params);
     return rows;
   },
 
-  insert(sql, params = []) {
-    _db.run(sql, params);
-    const id = _db.exec("SELECT last_insert_rowid() as id");
-    const lastId = id?.[0]?.values?.[0]?.[0] ?? null;
-    save();
-    return lastId;
+  async insert(sql, params = []) {
+    const [result] = await pool.execute(sql, params);
+    return result.insertId;
   },
 
-  exec(sql) {
-    _db.run(sql);
-    save();
+  async exec(sql) {
+    const statements = sql.split(';').map(s => s.trim()).filter(s => s);
+    for (const stmt of statements) {
+      await pool.execute(stmt);
+    }
   },
 
-  logActivity(type, action, detail, userId) {
-    this.insert('INSERT INTO activity_logs (type, action, detail, user_id) VALUES (?, ?, ?, ?)', [type, action, detail || '', userId || null]);
+  async logActivity(type, action, detail, userId) {
+    await this.insert('INSERT INTO activity_logs (type, action, detail, user_id) VALUES (?, ?, ?, ?)',
+      [type, action, detail || '', userId || null]);
   }
 };
 

@@ -99,7 +99,7 @@ const IncomingRequests = () => {
               <div className="ticket-card-meta">
                 <span><HiUser /> {req.customer_name || 'Anonymous'}</span>
                 {req.whatsapp && <span><HiPhone /> {req.whatsapp}</span>}
-                <span><HiClock /> {new Date(req.created_at + 'Z').toLocaleDateString()}</span>
+                <span><HiClock /> {new Date(req.created_at).toLocaleDateString()}</span>
               </div>
 
               {req.description && (

@@ -3,16 +3,16 @@ import db from '../db.js';
 
 const router = Router();
 
-router.get('/stats', (_req, res) => {
-  const userCount = db.get('SELECT COUNT(*) as count FROM admin_users').count;
-  const blogCount = db.get('SELECT COUNT(*) as count FROM blog_posts').count;
-  const serviceCount = db.get('SELECT COUNT(*) as count FROM service_packages WHERE is_active = 1').count;
-  const messageCount = db.get('SELECT COUNT(*) as count FROM contact_messages').count;
-  const clientCount = db.get('SELECT COUNT(*) as count FROM clients WHERE is_active = 1').count;
-  const requestCount = db.get("SELECT COUNT(*) as count FROM tickets WHERE type = 'request'").count;
-  const avgRating = db.get('SELECT ROUND(AVG(rating), 1) as avg FROM testimonials WHERE is_approved = 1').avg || 0;
+router.get('/stats', async (_req, res) => {
+  const userCount = (await db.get('SELECT COUNT(*) as count FROM admin_users')).count;
+  const blogCount = (await db.get('SELECT COUNT(*) as count FROM blog_posts')).count;
+  const serviceCount = (await db.get('SELECT COUNT(*) as count FROM service_packages WHERE is_active = 1')).count;
+  const messageCount = (await db.get('SELECT COUNT(*) as count FROM contact_messages')).count;
+  const clientCount = (await db.get('SELECT COUNT(*) as count FROM clients WHERE is_active = 1')).count;
+  const requestCount = (await db.get("SELECT COUNT(*) as count FROM tickets WHERE type = 'request'")).count;
+  const avgRating = (await db.get('SELECT ROUND(AVG(rating), 1) as avg FROM testimonials WHERE is_approved = 1')).avg || 0;
 
-  const recentActivity = db.all('SELECT type, action, detail, created_at as time FROM activity_logs ORDER BY created_at DESC LIMIT 20');
+  const recentActivity = await db.all('SELECT type, action, detail, created_at as time FROM activity_logs ORDER BY created_at DESC LIMIT 20');
 
   res.json({
     stats: [

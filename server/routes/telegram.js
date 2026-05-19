@@ -54,25 +54,66 @@ async function answerCallbackQuery(botToken, callbackQueryId, text) {
   } catch (e) { /* ignore */ }
 }
 
-function saveMessage(botId, chatId, role, message, convoId) {
-  db.insert('INSERT INTO telegram_messages (conversation_id, bot_id, chat_id, role, message) VALUES (?, ?, ?, ?, ?)', [convoId, botId, chatId, role, message]);
-  db.run('UPDATE telegram_conversations SET last_message=?, unread=unread+1, updated_at=CURRENT_TIMESTAMP WHERE id=?', [message, convoId]);
+async function saveMessage(botId, chatId, role, message, convoId) {
+  await db.insert('INSERT INTO telegram_messages (conversation_id, bot_id, chat_id, role, message) VALUES (?, ?, ?, ?, ?)', [convoId, botId, chatId, role, message]);
+  await db.run('UPDATE telegram_conversations SET last_message=?, unread=unread+1, updated_at=CURRENT_TIMESTAMP WHERE id=?', [message, convoId]);
 }
 
-function getOrCreateConversation(botId, chatId, userName) {
-  let convo = db.get('SELECT * FROM telegram_conversations WHERE bot_id=? AND chat_id=?', [botId, chatId]);
+async function getOrCreateConversation(botId, chatId, userName) {
+  let convo = await db.get('SELECT * FROM telegram_conversations WHERE bot_id=? AND chat_id=?', [botId, chatId]);
   if (!convo) {
-    db.run('INSERT OR IGNORE INTO telegram_conversations (bot_id, chat_id, user_name, status) VALUES (?, ?, ?, ?)', [botId, chatId, userName || '', 'ai']);
-    convo = db.get('SELECT * FROM telegram_conversations WHERE bot_id=? AND chat_id=?', [botId, chatId]);
+    await db.run('INSERT IGNORE INTO telegram_conversations (bot_id, chat_id, user_name, status) VALUES (?, ?, ?, ?)', [botId, chatId, userName || '', 'ai']);
+    convo = await db.get('SELECT * FROM telegram_conversations WHERE bot_id=? AND chat_id=?', [botId, chatId]);
   }
   return convo;
 }
+
+function isCooldownActive(convo) {
+  if (!convo.cooldown_until) {
+    console.log('[Cooldown] No cooldown for convo', convo.id, 'chat', convo.chat_id);
+    return false;
+  }
+  const now = Date.now();
+  const cooldown = new Date(convo.cooldown_until).getTime();
+  const remaining = Math.round((cooldown - now) / 1000);
+  console.log('[Cooldown] convo', convo.id, 'chat', convo.chat_id, 'remaining', remaining, 's');
+  return cooldown > now;
+}
+
+function formatCooldownRemaining(convo) {
+  if (!isCooldownActive(convo)) return null;
+  const diff = new Date(convo.cooldown_until) - new Date();
+  const h = Math.floor(diff / 3600000);
+  const m = Math.floor((diff % 3600000) / 60000);
+  return h > 0 ? `${h} jam ${m} menit` : `${m} menit`;
+}
+
+async function isCooldownBlocked(convo) {
+  if (!isCooldownActive(convo)) return false;
+  try {
+    const pending = JSON.parse(convo.pending_data || '{}');
+    let ticketId = pending.ticket_id;
+    if (!ticketId) {
+      const ticket = await db.get('SELECT id, status FROM tickets WHERE telegram_conversation_id = ? ORDER BY created_at DESC LIMIT 1', [convo.id]);
+      if (ticket) ticketId = ticket.id;
+    }
+    if (ticketId) {
+      const ticket = await db.get('SELECT status FROM tickets WHERE id = ?', [ticketId]);
+      if (!ticket || ticket.status === 'closed') {
+        await db.run('UPDATE telegram_conversations SET cooldown_until=NULL WHERE id=?', [convo.id]);
+        return false;
+      }
+    }
+  } catch (e) { /* ignore */ }
+  return true;
+}
+
+const COOLDOWN_MS = 6 * 60 * 60 * 1000;
 
 const MAIN_MENU = [
   [{ text: '🎫 Buat Ticket', callback_data: 'create_ticket' }],
   [{ text: '📶 Upgrade Bandwidth', callback_data: 'upgrade' }],
   [{ text: '🔧 Instalasi Baru', callback_data: 'install' }],
-  [{ text: '🔍 Cek Status Ticket', callback_data: 'check_ticket_status' }],
   [{ text: '💬 Bicara dengan CS', callback_data: 'talk_to_cs' }]
 ];
 
@@ -92,13 +133,13 @@ const END_SESSION_KEYBOARD = [
 ];
 
 async function sendMainMenu(bot, chatId, userName) {
-  db.run('UPDATE telegram_conversations SET state=?, pending_data=? WHERE bot_id=? AND chat_id=?', ['idle', '', bot.id, String(chatId)]);
+  await db.run('UPDATE telegram_conversations SET state=?, pending_data=? WHERE bot_id=? AND chat_id=?', ['idle', '', bot.id, String(chatId)]);
   const welcome = `Halo ${userName || 'Sobat MAZNET'}! 👋\n\nSelamat datang di layanan CS MAZNET. Silakan pilih opsi di bawah:`;
   await sendBotMessageWithKeyboard(bot.bot_token, chatId, welcome, MAIN_MENU);
 }
 
-function createTicketFromTelegram(type, title, description) {
-  return db.insert('INSERT INTO tickets (type, status, priority, title, description) VALUES (?, ?, ?, ?, ?)', [type, 'open', 'medium', title, description]);
+async function createTicketFromTelegram(type, title, description, conversationId) {
+  return await db.insert('INSERT INTO tickets (type, status, priority, title, description, telegram_conversation_id) VALUES (?, ?, ?, ?, ?, ?)', [type, 'open', 'medium', title, description, conversationId || null]);
 }
 
 async function processAI(bot, chatId, userText, userName) {
@@ -108,14 +149,30 @@ async function processAI(bot, chatId, userText, userName) {
   processingLocks.add(lockKey);
 
   try {
-    const convo = getOrCreateConversation(bot.id, String(chatId), userName);
-    saveMessage(bot.id, String(chatId), 'user', userText, convo.id);
+    const convo = await getOrCreateConversation(bot.id, String(chatId), userName);
+    await saveMessage(bot.id, String(chatId), 'user', userText, convo.id);
+
+    if (await isCooldownBlocked(convo) && convo.status !== 'human' && !['/start', '/stop', 'menu', 'batal'].includes(userText.toLowerCase())) {
+      const remaining = formatCooldownRemaining(convo);
+      await sendBotMessage(bot.bot_token, String(chatId), '⏳ Mohon tunggu sebelum menggunakan fitur ini.');
+      return;
+    }
 
     if (convo.status === 'ended') {
       if (userText === '/start') {
-        db.run('UPDATE telegram_conversations SET status=?, state=?, pending_data=? WHERE id=?', ['ai', 'idle', '', convo.id]);
+        await db.run('UPDATE telegram_conversations SET status=?, state=?, pending_data=? WHERE id=?', ['ai', 'idle', '', convo.id]);
         await sendMainMenu(bot, String(chatId), userName);
+      } else if (userText === '/stop') {
+        await sendBotMessage(bot.bot_token, String(chatId), '🙏 Sesi sudah diakhiri. Ketik /start untuk memulai ulang.');
       }
+      return;
+    }
+
+    if (userText.toLowerCase() === '/stop') {
+      await db.run('UPDATE telegram_conversations SET status=?, state=?, pending_data=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', ['ended', 'idle', '', convo.id]);
+      const reply = '🙏 Sesi diakhiri. Terima kasih telah menghubungi MAZNET. Jika ada yang bisa dibantu, ketik /start kapan saja.';
+      await sendBotMessage(bot.bot_token, String(chatId), reply);
+      await saveMessage(bot.id, String(chatId), 'bot', reply, convo.id);
       return;
     }
 
@@ -131,61 +188,26 @@ async function processAI(bot, chatId, userText, userName) {
 
     const state = convo.state || 'idle';
 
-    if (state === 'checking_ticket_id') {
-      const ticketId = parseInt(userText);
-      const ticket = db.get('SELECT * FROM tickets WHERE id = ?', [ticketId]);
-      if (!ticket) {
-        const reply = '❌ Ticket #' + userText + ' tidak ditemukan. Periksa kembali nomor ID ticket.';
-        const msg = await sendBotMessage(bot.bot_token, String(chatId), reply);
-        if (msg.ok) saveMessage(bot.id, String(chatId), 'bot', reply, convo.id);
-        await sendMainMenu(bot, String(chatId), userName);
-        return;
-      }
-      const statusLabels = { open: '🔴 Open', in_progress: '🟡 In Progress', resolved: '🟢 Resolved', closed: '⚫ Closed' };
-      const statusLine = statusLabels[ticket.status] || ticket.status;
-      const reply = '📋 *Status Ticket #' + ticket.id + '*\n\n' +
-        'Judul: ' + ticket.title + '\n' +
-        'Status: ' + statusLine + '\n' +
-        'Prioritas: ' + (ticket.priority || '-') + '\n' +
-        'Tipe: ' + (ticket.type || '-') + '\n' +
-        'Dibuat: ' + (ticket.created_at || '-') + '\n\n';
-
-      if (ticket.status === 'resolved') {
-        db.run('UPDATE telegram_conversations SET state=?, pending_data=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', ['confirming_close_ticket', String(ticket.id), convo.id]);
-        const confirmKeyboard = [
-          [{ text: '✅ Ya, Tutup Ticket', callback_data: 'confirm_close_ticket' }],
-          [{ text: '❌ Tidak', callback_data: 'reject_close_ticket' }]
-        ];
-        const msg = await sendBotMessageWithKeyboard(bot.bot_token, String(chatId), reply + 'Ticket ini sudah *Resolved*. Apakah Anda ingin menutup ticket ini?', confirmKeyboard);
-        if (msg.ok) saveMessage(bot.id, String(chatId), 'bot', reply + 'Ticket ini sudah Resolved. Apakah Anda ingin menutup ticket ini?', convo.id);
-      } else {
-        db.run('UPDATE telegram_conversations SET state=?, pending_data=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', ['idle', '', convo.id]);
-        const msg = await sendBotMessage(bot.bot_token, String(chatId), reply);
-        if (msg.ok) saveMessage(bot.id, String(chatId), 'bot', reply, convo.id);
-        await sendMainMenu(bot, String(chatId), userName);
-      }
-      return;
-    }
-
     if (state === 'awaiting_ticket_description') {
-      const ticketId = createTicketFromTelegram('maintenance', '[Telegram] ' + userName + ' - Laporan Gangguan', userText);
-      db.run('UPDATE telegram_conversations SET state=?, pending_data=? WHERE id=?', ['idle', '', convo.id]);
-      const reply = '✅ Ticket #' + ticketId + ' berhasil dibuat dengan keluhan:\n"' + userText + '"\n\nTim kami akan segera menangani.';
+      const ticketId = await createTicketFromTelegram('maintenance', '[Telegram] ' + userName + ' - Laporan Gangguan', userText, convo.id);
+      const cooldownUntil = new Date(Date.now() + COOLDOWN_MS);
+      await db.run('UPDATE telegram_conversations SET state=?, pending_data=?, cooldown_until=? WHERE id=?', ['idle', JSON.stringify({ ticket_id: ticketId }), cooldownUntil, convo.id]);
+      const reply = '✅ Laporan gangguan Anda telah diterima. Tim kami akan segera menangani.';
       const msg = await sendBotMessage(bot.bot_token, String(chatId), reply);
-      if (msg.ok) saveMessage(bot.id, String(chatId), 'bot', reply, convo.id);
+      if (msg.ok) await saveMessage(bot.id, String(chatId), 'bot', reply, convo.id);
       await sendMainMenu(bot, String(chatId), userName);
       return;
     }
 
     if (state === 'awaiting_upgrade_customer_id') {
-      db.run('UPDATE telegram_conversations SET state=?, pending_data=? WHERE id=?', ['awaiting_upgrade_package', JSON.stringify({ customer_id: userText }), convo.id]);
+      await db.run('UPDATE telegram_conversations SET state=?, pending_data=? WHERE id=?', ['awaiting_upgrade_package', JSON.stringify({ customer_id: userText }), convo.id]);
       const reply = 'Terima kasih! ID Pelanggan: ' + userText + '\n\nSilakan pilih paket upgrade yang diinginkan:';
       await sendBotMessageWithKeyboard(bot.bot_token, String(chatId), reply, PACKAGE_KEYBOARD);
       return;
     }
 
     if (state === 'awaiting_install_address') {
-      db.run('UPDATE telegram_conversations SET state=?, pending_data=? WHERE id=?', ['awaiting_install_location', JSON.stringify({ address: userText }), convo.id]);
+      await db.run('UPDATE telegram_conversations SET state=?, pending_data=? WHERE id=?', ['awaiting_install_location', JSON.stringify({ address: userText }), convo.id]);
       const reply = 'Alamat: ' + userText + '\n\nSilakan share lokasi Anda (kirim location via attachment) atau ketik nama lokasi:';
       await sendBotMessageWithKeyboard(bot.bot_token, String(chatId), reply, CANCEL_KEYBOARD);
       return;
@@ -194,36 +216,41 @@ async function processAI(bot, chatId, userText, userName) {
     if (state === 'awaiting_install_location') {
       const pending = JSON.parse(convo.pending_data || '{}');
       const address = pending.address || '';
-      const ticketId = createTicketFromTelegram('installation', '[Telegram] ' + userName + ' - Permintaan Instalasi', 'Alamat: ' + address + '\nLokasi: ' + userText);
-      db.run('UPDATE telegram_conversations SET state=?, pending_data=? WHERE id=?', ['idle', '', convo.id]);
-      const reply = '✅ Permintaan instalasi #' + ticketId + ' berhasil diajukan!\nAlamat: ' + address + '\nLokasi: ' + userText + '\n\nTim kami akan menghubungi Anda untuk jadwal.';
+      const ticketId = await createTicketFromTelegram('installation', '[Telegram] ' + userName + ' - Permintaan Instalasi', 'Alamat: ' + address + '\nLokasi: ' + userText, convo.id);
+      const cooldownUntil = new Date(Date.now() + COOLDOWN_MS);
+      await db.run('UPDATE telegram_conversations SET state=?, pending_data=?, cooldown_until=? WHERE id=?', ['idle', JSON.stringify({ ticket_id: ticketId }), cooldownUntil, convo.id]);
+      const reply = '✅ Permintaan instalasi baru telah diajukan. Tim kami akan menghubungi Anda untuk jadwal.';
       const msg = await sendBotMessage(bot.bot_token, String(chatId), reply);
-      if (msg.ok) saveMessage(bot.id, String(chatId), 'bot', reply, convo.id);
+      if (msg.ok) await saveMessage(bot.id, String(chatId), 'bot', reply, convo.id);
       await sendMainMenu(bot, String(chatId), userName);
       return;
     }
 
-    if (!bot.ai_api_key) {
-      const msg = await sendBotMessage(bot.bot_token, String(chatId), '⚠️ Maaf, AI bot belum dikonfigurasi.');
-      if (msg.ok) saveMessage(bot.id, String(chatId), 'bot', '⚠️ Maaf, AI bot belum dikonfigurasi.', convo.id);
-      return;
-    }
+    if (bot.ai_enabled && bot.ai_api_key) {
+      const history = await db.all('SELECT role, message FROM telegram_messages WHERE conversation_id=? ORDER BY id DESC LIMIT 10', [convo.id]);
+      const defaultModels = { openai: 'gpt-4o-mini', openrouter: 'openai/gpt-4o-mini', gemini: 'gemini-2.0-flash', claude: 'claude-3-haiku-20240307', custom: '' };
+      const resolvedModel = bot.ai_model || defaultModels[bot.ai_provider] || '';
+      const result = await callAI(bot.ai_provider || 'openai', resolvedModel, bot.ai_api_key, userText, bot.ai_url, history.reverse());
 
-    const history = db.all('SELECT role, message FROM telegram_messages WHERE conversation_id=? ORDER BY id DESC LIMIT 10', [convo.id]).reverse();
-    const defaultModels = { openai: 'gpt-4o-mini', openrouter: 'openai/gpt-4o-mini', gemini: 'gemini-2.0-flash', claude: 'claude-3-haiku-20240307', custom: '' };
-    const resolvedModel = bot.ai_model || defaultModels[bot.ai_provider] || '';
-    const result = await callAI(bot.ai_provider || 'openai', resolvedModel, bot.ai_api_key, userText, bot.ai_url, history);
-    
-    if (result.ok) {
-      const reply = result.text;
-      const msg = await sendBotMessage(bot.bot_token, String(chatId), reply);
-      if (msg.ok) saveMessage(bot.id, String(chatId), 'bot', reply, convo.id);
-      if (msg.ok && convo.status === 'ai') {
-        await sendBotMessageWithKeyboard(bot.bot_token, String(chatId), 'Ada lagi yang bisa kami bantu? Pilih menu di bawah:', MAIN_MENU);
+      if (result.ok) {
+        const reply = result.text;
+        const msg = await sendBotMessage(bot.bot_token, String(chatId), reply);
+        if (msg.ok) await saveMessage(bot.id, String(chatId), 'bot', reply, convo.id);
+        if (msg.ok && convo.status === 'ai') {
+          await sendBotMessageWithKeyboard(bot.bot_token, String(chatId), 'Ada lagi yang bisa kami bantu? Pilih menu di bawah:', MAIN_MENU);
+        }
+      } else {
+        const errMsg = '⚠️ Maaf, terjadi kesalahan: ' + (result.error || 'Unknown error');
+        await sendBotMessage(bot.bot_token, String(chatId), errMsg);
       }
     } else {
-      const errMsg = '⚠️ Maaf, terjadi kesalahan: ' + (result.error || 'Unknown error');
-      await sendBotMessage(bot.bot_token, String(chatId), errMsg);
+      const isThankYou = /terima kasih|makasih|thanks|thx|thank/i.test(userText);
+      const reply = isThankYou
+        ? 'Sama-sama! Ada lagi yang bisa saya bantu? 😊'
+        : 'Ada yang bisa saya bantu? Silakan pilih menu di bawah:';
+      const msg = await sendBotMessage(bot.bot_token, String(chatId), reply);
+      if (msg.ok) await saveMessage(bot.id, String(chatId), 'bot', reply, convo.id);
+      await sendMainMenu(bot, String(chatId), userName);
     }
   } catch (error) {
     console.error('AI Processing Error:', error);
@@ -233,22 +260,30 @@ async function processAI(bot, chatId, userText, userName) {
 }
 
 async function processLocation(bot, chatId, location, userName) {
-  const convo = getOrCreateConversation(bot.id, String(chatId), userName);
+  const convo = await getOrCreateConversation(bot.id, String(chatId), userName);
+
+  if (await isCooldownBlocked(convo) && convo.status !== 'human') {
+    const remaining = formatCooldownRemaining(convo);
+    await sendBotMessage(bot.bot_token, String(chatId), '⏳ Mohon tunggu sebelum menggunakan fitur ini.');
+    return;
+  }
+
   const lat = location.latitude;
   const lon = location.longitude;
   const locText = 'https://maps.google.com/?q=' + lat + ',' + lon;
-  saveMessage(bot.id, String(chatId), 'user', '📍 Lokasi: ' + locText, convo.id);
+  await saveMessage(bot.id, String(chatId), 'user', '📍 Lokasi: ' + locText, convo.id);
 
   const state = convo.state || 'idle';
 
   if (state === 'awaiting_install_location') {
     const pending = JSON.parse(convo.pending_data || '{}');
     const address = pending.address || '';
-    const ticketId = createTicketFromTelegram('installation', '[Telegram] ' + userName + ' - Permintaan Instalasi', 'Alamat: ' + address + '\nLokasi (maps): ' + locText);
-    db.run('UPDATE telegram_conversations SET state=?, pending_data=? WHERE id=?', ['idle', '', convo.id]);
-    const reply = '✅ Permintaan instalasi #' + ticketId + ' berhasil diajukan!\nAlamat: ' + address + '\nLokasi: ' + locText + '\n\nTim kami akan menghubungi Anda untuk jadwal.';
+    const ticketId = await createTicketFromTelegram('installation', '[Telegram] ' + userName + ' - Permintaan Instalasi', 'Alamat: ' + address + '\nLokasi (maps): ' + locText, convo.id);
+    const cooldownUntil = new Date(Date.now() + COOLDOWN_MS);
+      await db.run('UPDATE telegram_conversations SET state=?, pending_data=?, cooldown_until=? WHERE id=?', ['idle', JSON.stringify({ ticket_id: ticketId }), cooldownUntil, convo.id]);
+    const reply = '✅ Permintaan instalasi baru telah diajukan. Tim kami akan menghubungi Anda untuk jadwal.';
     const msg = await sendBotMessage(bot.bot_token, String(chatId), reply);
-    if (msg.ok) saveMessage(bot.id, String(chatId), 'bot', reply, convo.id);
+    if (msg.ok) await saveMessage(bot.id, String(chatId), 'bot', reply, convo.id);
     await sendMainMenu(bot, String(chatId), userName);
     return;
   }
@@ -261,110 +296,115 @@ async function processCallbackQuery(bot, callbackQuery) {
   if (!bot || bot.role !== 'customer_service') return;
   const data = callbackQuery.data;
   const chatId = callbackQuery.message.chat.id;
-  const userId = callbackQuery.from.id;
   const userName = callbackQuery.from.first_name || 'User';
   const callbackId = callbackQuery.id;
 
-  const convo = getOrCreateConversation(bot.id, String(chatId), userName);
+  await answerCallbackQuery(bot.bot_token, callbackId, '⏳ Memproses...');
 
-  switch (data) {
-    case 'check_ticket_status': {
-      db.run('UPDATE telegram_conversations SET state=?, pending_data=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', ['checking_ticket_id', '', convo.id]);
-      await answerCallbackQuery(bot.bot_token, callbackId, 'Masukkan ID ticket');
-      const reply = '🔍 Silakan masukkan nomor ID ticket yang ingin dicek:\n\nContoh: "123"\n\n(Ketik *batal* untuk membatalkan)';
-      await sendBotMessageWithKeyboard(bot.bot_token, String(chatId), reply, CANCEL_KEYBOARD);
-      break;
+  try {
+    const convo = await getOrCreateConversation(bot.id, String(chatId), userName);
+
+    if (await isCooldownBlocked(convo) && data !== 'talk_to_cs' && data !== 'end_session' && data !== 'back_to_menu') {
+      await sendBotMessage(bot.bot_token, String(chatId), '⏳ Mohon tunggu sebelum menggunakan fitur ini.');
+      return;
     }
-    case 'create_ticket': {
-      db.run('UPDATE telegram_conversations SET state=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', ['awaiting_ticket_description', convo.id]);
-      await answerCallbackQuery(bot.bot_token, callbackId, 'Silakan tulis keluhan');
-      const reply = '🎫 Silakan tulis keluhan Anda dengan detail:\n\n(Ketik *batal* untuk membatalkan)';
-      await sendBotMessageWithKeyboard(bot.bot_token, String(chatId), reply, CANCEL_KEYBOARD);
-      break;
-    }
-    case 'upgrade': {
-      db.run('UPDATE telegram_conversations SET state=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', ['awaiting_upgrade_customer_id', convo.id]);
-      await answerCallbackQuery(bot.bot_token, callbackId, 'Masukkan ID pelanggan');
-      const reply = '📶 Silakan masukkan ID pelanggan Anda:\n\n(Ketik *batal* untuk membatalkan)';
-      await sendBotMessageWithKeyboard(bot.bot_token, String(chatId), reply, CANCEL_KEYBOARD);
-      break;
-    }
-    case 'install': {
-      db.run('UPDATE telegram_conversations SET state=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', ['awaiting_install_address', convo.id]);
-      await answerCallbackQuery(bot.bot_token, callbackId, 'Masukkan alamat');
-      const reply = '🔧 Silakan masukkan alamat lengkap untuk instalasi:\n\n(Ketik *batal* untuk membatalkan)';
-      await sendBotMessageWithKeyboard(bot.bot_token, String(chatId), reply, CANCEL_KEYBOARD);
-      break;
-    }
-    case 'talk_to_cs': {
-      db.run('UPDATE telegram_conversations SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', ['human', convo.id]);
-      await answerCallbackQuery(bot.bot_token, callbackId, '🔄 Dialihkan ke CS human!');
-      const reply = '💬 Anda sekarang terhubung dengan CS MAZNET. Silakan tulis pesan Anda, dan tim kami akan merespon segera.\n\nKetik *menu* untuk kembali ke menu utama.';
-      await sendBotMessage(bot.bot_token, String(chatId), reply);
-      saveMessage(bot.id, String(chatId), 'bot', reply, convo.id);
-      break;
-    }
-    case 'end_session': {
-      db.run('UPDATE telegram_conversations SET status=?, state=?, pending_data=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', ['ended', 'idle', '', convo.id]);
-      await answerCallbackQuery(bot.bot_token, callbackId, '✅ Sesi diakhiri');
-      const reply = '🙏 Terima kasih telah menghubungi CS MAZNET.';
-      await sendBotMessage(bot.bot_token, String(chatId), reply);
-      saveMessage(bot.id, String(chatId), 'bot', reply, convo.id);
-      break;
-    }
-    case 'confirm_close_ticket': {
-      const pendingTicketId = parseInt(convo.pending_data || '0');
-      if (pendingTicketId) {
-        const existing = db.get('SELECT * FROM tickets WHERE id = ?', [pendingTicketId]);
-        if (existing && existing.status === 'resolved') {
-          db.run('UPDATE tickets SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', ['closed', pendingTicketId]);
-          db.logActivity('ticket', 'Ticket ditutup via Telegram', '#' + pendingTicketId + ' ' + existing.title, null);
-          const reply = '✅ Ticket #' + pendingTicketId + ' berhasil ditutup. Terima kasih!';
-          await sendBotMessage(bot.bot_token, String(chatId), reply);
-          saveMessage(bot.id, String(chatId), 'bot', reply, convo.id);
-        } else {
-          await sendBotMessage(bot.bot_token, String(chatId), '⚠️ Ticket sudah tidak dalam status Resolved atau tidak ditemukan.');
-        }
+
+    switch (data) {
+      case 'create_ticket': {
+        await answerCallbackQuery(bot.bot_token, callbackId, 'Silakan tulis keluhan');
+        await db.run('UPDATE telegram_conversations SET state=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', ['awaiting_ticket_description', convo.id]);
+        const reply = '🎫 Silakan tulis keluhan Anda dengan detail:\n\n(Ketik *batal* untuk membatalkan)';
+        await sendBotMessageWithKeyboard(bot.bot_token, String(chatId), reply, CANCEL_KEYBOARD);
+        break;
       }
-      await answerCallbackQuery(bot.bot_token, callbackId, '✅ Ticket ditutup');
-      db.run('UPDATE telegram_conversations SET state=?, pending_data=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', ['idle', '', convo.id]);
-      await sendMainMenu(bot, String(chatId), userName);
-      break;
-    }
-    case 'reject_close_ticket': {
-      const rejectTicketId = parseInt(convo.pending_data || '0');
-      await answerCallbackQuery(bot.bot_token, callbackId, 'Baik, ticket tetap open');
-      if (rejectTicketId) {
-        const reply = 'Baik, ticket #' + rejectTicketId + ' tetap dalam status Resolved. Tim kami akan menghubungi Anda jika perlu.';
+      case 'upgrade': {
+        await answerCallbackQuery(bot.bot_token, callbackId, 'Masukkan ID pelanggan');
+        await db.run('UPDATE telegram_conversations SET state=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', ['awaiting_upgrade_customer_id', convo.id]);
+        const reply = '📶 Silakan masukkan ID pelanggan Anda:\n\n(Ketik *batal* untuk membatalkan)';
+        await sendBotMessageWithKeyboard(bot.bot_token, String(chatId), reply, CANCEL_KEYBOARD);
+        break;
+      }
+      case 'install': {
+        await answerCallbackQuery(bot.bot_token, callbackId, 'Masukkan alamat');
+        await db.run('UPDATE telegram_conversations SET state=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', ['awaiting_install_address', convo.id]);
+        const reply = '🔧 Silakan masukkan alamat lengkap untuk instalasi:\n\n(Ketik *batal* untuk membatalkan)';
+        await sendBotMessageWithKeyboard(bot.bot_token, String(chatId), reply, CANCEL_KEYBOARD);
+        break;
+      }
+      case 'talk_to_cs': {
+        await answerCallbackQuery(bot.bot_token, callbackId, '🔄 Dialihkan ke CS human!');
+        await db.run('UPDATE telegram_conversations SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', ['human', convo.id]);
+        const reply = '💬 Anda sekarang terhubung dengan CS MAZNET. Silakan tulis pesan Anda, dan tim kami akan merespon segera.\n\nKetik *menu* untuk kembali ke menu utama.';
         await sendBotMessage(bot.bot_token, String(chatId), reply);
-        saveMessage(bot.id, String(chatId), 'bot', reply, convo.id);
+        await saveMessage(bot.id, String(chatId), 'bot', reply, convo.id);
+        break;
       }
-      db.run('UPDATE telegram_conversations SET state=?, pending_data=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', ['idle', '', convo.id]);
-      await sendMainMenu(bot, String(chatId), userName);
-      break;
-    }
-    case 'back_to_menu': {
-      await answerCallbackQuery(bot.bot_token, callbackId, 'Kembali ke menu');
-      await sendMainMenu(bot, String(chatId), userName);
-      break;
-    }
-    default:
-      if (data.startsWith('upgrade_pkg_')) {
-        const pkgMap = { starter: 'Starter Rp160rb/10Mbps', professional: 'Professional Rp400rb/50Mbps', enterprise: 'Enterprise (Hubungi Kami)' };
-        const pkg = data.replace('upgrade_pkg_', '');
-        const pkgName = pkgMap[pkg] || data;
-        const pending = JSON.parse(convo.pending_data || '{}');
-        const customerId = pending.customer_id || '-';
-        const ticketId = createTicketFromTelegram('upgrade', '[Telegram] ' + userName + ' - Upgrade ke ' + pkgName, 'ID Pelanggan: ' + customerId + '\nPaket: ' + pkgName);
-        db.run('UPDATE telegram_conversations SET state=?, pending_data=? WHERE id=?', ['idle', '', convo.id]);
-        await answerCallbackQuery(bot.bot_token, callbackId, '✅ Upgrade diajukan!');
-        const reply = '📶 Permintaan upgrade #' + ticketId + ' berhasil diajukan!\nID Pelanggan: ' + customerId + '\nPaket: ' + pkgName + '\n\nTim kami akan menghubungi Anda.';
-        const msg = await sendBotMessage(bot.bot_token, String(chatId), reply);
-        if (msg.ok) saveMessage(bot.id, String(chatId), 'bot', reply, convo.id);
+      case 'end_session': {
+        await answerCallbackQuery(bot.bot_token, callbackId, '✅ Sesi diakhiri');
+        await db.run('UPDATE telegram_conversations SET status=?, state=?, pending_data=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', ['ended', 'idle', '', convo.id]);
+        const reply = '🙏 Terima kasih telah menghubungi CS MAZNET.';
+        await sendBotMessage(bot.bot_token, String(chatId), reply);
+        await saveMessage(bot.id, String(chatId), 'bot', reply, convo.id);
+        break;
+      }
+      case 'confirm_close_ticket': {
+        await answerCallbackQuery(bot.bot_token, callbackId, '✅ Menutup ticket...');
+        const pendingTicketId = parseInt(convo.pending_data || '0');
+        if (pendingTicketId) {
+          const existing = await db.get('SELECT * FROM tickets WHERE id = ?', [pendingTicketId]);
+          if (existing && existing.status === 'resolved') {
+            await db.run('UPDATE tickets SET status=?, updated_at=CURRENT_TIMESTAMP WHERE id=?', ['closed', pendingTicketId]);
+            await db.logActivity('ticket', 'Ticket ditutup via Telegram', '#' + pendingTicketId + ' ' + existing.title, null);
+            const reply = '✅ Ticket #' + pendingTicketId + ' berhasil ditutup. Terima kasih!';
+            await sendBotMessage(bot.bot_token, String(chatId), reply);
+            await saveMessage(bot.id, String(chatId), 'bot', reply, convo.id);
+          } else {
+            await sendBotMessage(bot.bot_token, String(chatId), '⚠️ Ticket sudah tidak dalam status Resolved atau tidak ditemukan.');
+          }
+        }
+        await db.run('UPDATE telegram_conversations SET state=?, pending_data=?, cooldown_until=NULL, updated_at=CURRENT_TIMESTAMP WHERE id=?', ['idle', '', convo.id]);
         await sendMainMenu(bot, String(chatId), userName);
-      } else {
-        await answerCallbackQuery(bot.bot_token, callbackId, 'Pilihan tidak dikenal');
+        break;
       }
+      case 'reject_close_ticket': {
+        await answerCallbackQuery(bot.bot_token, callbackId, 'Baik, ticket tetap open');
+        const rejectTicketId = parseInt(convo.pending_data || '0');
+        if (rejectTicketId) {
+          const reply = 'Baik, ticket #' + rejectTicketId + ' tetap dalam status Resolved. Tim kami akan menghubungi Anda jika perlu.';
+          await sendBotMessage(bot.bot_token, String(chatId), reply);
+          await saveMessage(bot.id, String(chatId), 'bot', reply, convo.id);
+        }
+        await db.run('UPDATE telegram_conversations SET state=?, pending_data=?, cooldown_until=NULL, updated_at=CURRENT_TIMESTAMP WHERE id=?', ['idle', '', convo.id]);
+        await sendMainMenu(bot, String(chatId), userName);
+        break;
+      }
+      case 'back_to_menu': {
+        await answerCallbackQuery(bot.bot_token, callbackId, 'Kembali ke menu');
+        await sendMainMenu(bot, String(chatId), userName);
+        break;
+      }
+      default:
+        if (data.startsWith('upgrade_pkg_')) {
+          const pkgMap = { starter: 'Starter Rp160rb/10Mbps', professional: 'Professional Rp400rb/50Mbps', enterprise: 'Enterprise (Hubungi Kami)' };
+          const pkg = data.replace('upgrade_pkg_', '');
+          const pkgName = pkgMap[pkg] || data;
+          const pending = JSON.parse(convo.pending_data || '{}');
+          const customerId = pending.customer_id || '-';
+          const ticketId = await createTicketFromTelegram('upgrade', '[Telegram] ' + userName + ' - Upgrade ke ' + pkgName, 'ID Pelanggan: ' + customerId + '\nPaket: ' + pkgName, convo.id);
+          await answerCallbackQuery(bot.bot_token, callbackId, '✅ Upgrade diajukan!');
+          const cooldownUntil = new Date(Date.now() + COOLDOWN_MS);
+          await db.run('UPDATE telegram_conversations SET state=?, pending_data=?, cooldown_until=? WHERE id=?', ['idle', JSON.stringify({ ticket_id: ticketId }), cooldownUntil, convo.id]);
+          const reply = '📶 Permintaan upgrade ke paket ' + pkgName + ' telah diajukan. Tim kami akan menghubungi Anda.';
+          const msg = await sendBotMessage(bot.bot_token, String(chatId), reply);
+          if (msg.ok) await saveMessage(bot.id, String(chatId), 'bot', reply, convo.id);
+          await sendMainMenu(bot, String(chatId), userName);
+        } else {
+          await answerCallbackQuery(bot.bot_token, callbackId, 'Pilihan tidak dikenal');
+        }
+    }
+  } catch (error) {
+    console.error('CallbackQuery Error bot ' + bot.id + ':', error.message, '\nStack:', error.stack);
+    await sendBotMessage(bot.bot_token, String(chatId), '⚠️ Error: ' + error.message);
   }
 }
 
@@ -398,7 +438,7 @@ function startPolling(bot) {
         }
       }
     } catch (e) {
-      console.error('Polling error bot ' + bot.id + ':', e.message);
+      console.error('Polling error bot ' + bot.id + ':', e.message, '\nStack:', e.stack);
     }
   };
   poll();
@@ -412,15 +452,15 @@ function stopPolling(botId) {
   }
 }
 
-function initPolling() {
-  const bots = db.all('SELECT * FROM telegram_bots WHERE is_active = 1 AND role = ?', ['customer_service']);
+async function initPolling() {
+  const bots = await db.all('SELECT * FROM telegram_bots WHERE is_active = 1 AND role = ?', ['customer_service']);
   for (const bot of bots) startPolling(bot);
 }
 
 router.post('/send', authenticate, async (req, res) => {
   const { bot_id, chat_id, message } = req.body;
   if (!bot_id || !chat_id || !message) return res.status(400).json({ message: 'bot_id, chat_id, and message are required' });
-  const bot = db.get('SELECT * FROM telegram_bots WHERE id = ? AND is_active = 1', [bot_id]);
+  const bot = await db.get('SELECT * FROM telegram_bots WHERE id = ? AND is_active = 1', [bot_id]);
   if (!bot) return res.status(404).json({ message: 'Bot not found or inactive' });
   const result = await sendBotMessage(bot.bot_token, chat_id, message);
   if (!result.ok) return res.status(502).json({ ok: false, description: result.description || 'Telegram API error', message: result.description || 'Telegram API error' });
@@ -430,7 +470,7 @@ router.post('/send', authenticate, async (req, res) => {
 router.post('/test', authenticate, async (req, res) => {
   const { bot_id } = req.body;
   if (!bot_id) return res.status(400).json({ message: 'bot_id is required' });
-  const bot = db.get('SELECT * FROM telegram_bots WHERE id = ?', [parseInt(bot_id)]);
+  const bot = await db.get('SELECT * FROM telegram_bots WHERE id = ?', [parseInt(bot_id)]);
   if (!bot) return res.status(404).json({ message: 'Bot not found' });
   try {
     const resp = await fetch(`https://api.telegram.org/bot${bot.bot_token}/getMe`);
@@ -444,7 +484,7 @@ router.post('/test', authenticate, async (req, res) => {
 
 
 router.get('/bots/:id/status', authenticate, async (req, res) => {
-  const bot = db.get('SELECT * FROM telegram_bots WHERE id = ?', [parseInt(req.params.id)]);
+  const bot = await db.get('SELECT * FROM telegram_bots WHERE id = ?', [parseInt(req.params.id)]);
   if (!bot) return res.status(404).json({ message: 'Bot not found' });
   try {
     const resp = await fetch(`https://api.telegram.org/bot${bot.bot_token}/getMe`);
@@ -459,7 +499,7 @@ router.get('/bots/:id/status', authenticate, async (req, res) => {
 router.post('/webhook/:botId', async (req, res) => {
   res.status(200).end();
   const update = req.body;
-  const bot = db.get('SELECT * FROM telegram_bots WHERE id = ? AND is_active = 1', [req.params.botId]);
+  const bot = await db.get('SELECT * FROM telegram_bots WHERE id = ? AND is_active = 1', [req.params.botId]);
   if (!bot) return;
   if (update?.message?.text) {
     const userName = update.message.from?.first_name || 'User';
@@ -472,14 +512,21 @@ router.post('/webhook/:botId', async (req, res) => {
   }
 });
 
-router.post('/start-polling', authenticate, (req, res) => {
+router.post('/start-polling', authenticate, async (req, res) => {
   const { bot_id } = req.body;
   if (!bot_id) return res.status(400).json({ message: 'bot_id is required' });
-  const bot = db.get('SELECT * FROM telegram_bots WHERE id = ?', [parseInt(bot_id)]);
+  const bot = await db.get('SELECT * FROM telegram_bots WHERE id = ?', [parseInt(bot_id)]);
   if (!bot) return res.status(404).json({ message: 'Bot not found' });
   stopPolling(parseInt(bot_id));
   startPolling(bot);
   res.json({ ok: true, message: 'Polling started' });
+});
+
+router.post('/stop-polling', authenticate, async (req, res) => {
+  const { bot_id } = req.body;
+  if (!bot_id) return res.status(400).json({ message: 'bot_id is required' });
+  stopPolling(parseInt(bot_id));
+  res.json({ ok: true, message: 'Polling stopped' });
 });
 
 
@@ -487,7 +534,7 @@ router.post('/check-ai', authenticate, async (req, res) => {
   const { bot_id, ai_provider, ai_model, ai_api_key, ai_url } = req.body;
   if (!bot_id) return res.json({ ok: false, error: 'bot_id is required' });
 
-  const bot = db.get('SELECT * FROM telegram_bots WHERE id = ?', [parseInt(bot_id)]);
+  const bot = await db.get('SELECT * FROM telegram_bots WHERE id = ?', [parseInt(bot_id)]);
   if (!bot) return res.json({ ok: false, error: 'Bot tidak ditemukan.' });
 
   // Allow testing live form values (not yet saved)
@@ -527,7 +574,7 @@ router.post('/check-ai', authenticate, async (req, res) => {
 router.post('/set-webhook', authenticate, async (req, res) => {
   const { bot_id, base_url } = req.body;
   if (!bot_id || !base_url) return res.status(400).json({ message: 'bot_id and base_url are required' });
-  const bot = db.get('SELECT * FROM telegram_bots WHERE id = ?', [bot_id]);
+  const bot = await db.get('SELECT * FROM telegram_bots WHERE id = ?', [bot_id]);
   if (!bot) return res.status(404).json({ message: 'Bot not found' });
   const webhookUrl = `${base_url.replace(/\/+$/, '')}/api/telegram/webhook/${bot_id}`;
   try {

@@ -28,7 +28,7 @@ async function closeMikrotikConn() {
 }
 
 async function getMikrotikConnection() {
-  const config = db.get('SELECT * FROM mikrotik_settings ORDER BY id DESC LIMIT 1');
+  const config = await db.get('SELECT * FROM mikrotik_settings ORDER BY id DESC LIMIT 1');
   if (!config || !config.host) throw new Error('No configuration');
 
   const hash = `${config.host}:${config.port || 8728}:${config.username}`;
@@ -67,8 +67,8 @@ async function getMikrotikConnection() {
   }
 }
 
-router.get('/settings', authenticate, (_req, res) => {
-  const row = db.get('SELECT * FROM mikrotik_settings ORDER BY id DESC LIMIT 1');
+router.get('/settings', authenticate, async (_req, res) => {
+  const row = await db.get('SELECT * FROM mikrotik_settings ORDER BY id DESC LIMIT 1');
   if (row) {
     row.password = decodePassword(row.password);
     res.json(row);
@@ -80,14 +80,14 @@ router.get('/settings', authenticate, (_req, res) => {
 router.post('/settings', authenticate, async (req, res) => {
   const { host, username, password, port } = req.body;
   const encoded = encodePassword(password);
-  const existing = db.get('SELECT id FROM mikrotik_settings ORDER BY id DESC LIMIT 1');
+  const existing = await db.get('SELECT id FROM mikrotik_settings ORDER BY id DESC LIMIT 1');
   if (existing) {
-    db.run('UPDATE mikrotik_settings SET host=?, username=?, password=?, port=?, is_active=1, updated_at=CURRENT_TIMESTAMP WHERE id=?', [host || '', username || '', encoded, port || 8728, existing.id]);
+    await db.run('UPDATE mikrotik_settings SET host=?, username=?, password=?, port=?, is_active=1, updated_at=CURRENT_TIMESTAMP WHERE id=?', [host || '', username || '', encoded, port || 8728, existing.id]);
   } else {
-    db.insert('INSERT INTO mikrotik_settings (host, username, password, port, is_active) VALUES (?, ?, ?, ?, 1)', [host || '', username || '', encoded, port || 8728]);
+    await db.insert('INSERT INTO mikrotik_settings (host, username, password, port, is_active) VALUES (?, ?, ?, ?, 1)', [host || '', username || '', encoded, port || 8728]);
   }
   await closeMikrotikConn();
-  const row = db.get('SELECT * FROM mikrotik_settings ORDER BY id DESC LIMIT 1');
+  const row = await db.get('SELECT * FROM mikrotik_settings ORDER BY id DESC LIMIT 1');
   row.password = '';
   res.json(row);
 });
@@ -96,7 +96,7 @@ router.get('/status', authenticate, async (_req, res) => {
   try {
     const conn = await getMikrotikConnection();
     const identity = await conn.write('/system/identity/print');
-    const config = db.get('SELECT host FROM mikrotik_settings ORDER BY id DESC LIMIT 1');
+    const config = await db.get('SELECT host FROM mikrotik_settings ORDER BY id DESC LIMIT 1');
     res.json({ connected: true, identity: identity?.[0]?.name || 'Unknown', host: config?.host || '' });
   } catch (e) {
     res.json({ connected: false, error: e.message });
@@ -161,19 +161,19 @@ const RANGE_MAP = {
   '1m': { seconds: 2592000, bucket: 7200 }
 };
 
-router.post('/traffic/save', authenticate, (req, res) => {
+router.post('/traffic/save', authenticate, async (req, res) => {
   const { interface: iface, rx, tx } = req.body;
   if (!iface) return res.status(400).json({ error: 'Interface is required' });
-  db.insert('INSERT INTO traffic_history (interface, rx, tx) VALUES (?, ?, ?)', [iface, rx || 0, tx || 0]);
+  await db.insert('INSERT INTO traffic_history (interface, rx, tx) VALUES (?, ?, ?)', [iface, rx || 0, tx || 0]);
   res.json({ ok: true });
 });
 
-router.get('/traffic/history/:interface', authenticate, (req, res) => {
+router.get('/traffic/history/:interface', authenticate, async (req, res) => {
   const { interface: iface } = req.params;
   const range = RANGE_MAP[req.query.range] || RANGE_MAP['3m'];
   const since = new Date(Date.now() - range.seconds * 1000).toISOString().replace('T', ' ').split('.')[0];
-  const rows = db.all(
-    `SELECT ROUND((strftime('%s', sampled_at) / ?) * ?) as time_bucket, AVG(rx) as rx, AVG(tx) as tx FROM traffic_history WHERE interface = ? AND sampled_at >= ? GROUP BY time_bucket ORDER BY time_bucket ASC`,
+  const rows = await db.all(
+    `SELECT ROUND(UNIX_TIMESTAMP(sampled_at) / ?) * ? as time_bucket, AVG(rx) as rx, AVG(tx) as tx FROM traffic_history WHERE interface = ? AND sampled_at >= ? GROUP BY time_bucket ORDER BY time_bucket ASC`,
     [range.bucket, range.bucket, iface, since]
   );
   res.json(rows.map(r => ({

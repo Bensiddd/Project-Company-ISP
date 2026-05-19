@@ -80,7 +80,7 @@ const AdminOverview = () => {
                   <p className="activity-action">{act.action}</p>
                   <p className="activity-detail">{act.detail}</p>
                 </div>
-                <span className="activity-time"><HiClock /> {act.time ? new Date(act.time + 'Z').toLocaleDateString() : 'Today'}</span>
+                <span className="activity-time"><HiClock /> {act.time ? new Date(act.time).toLocaleDateString() : 'Today'}</span>
               </motion.div>
             ))}
           </div>

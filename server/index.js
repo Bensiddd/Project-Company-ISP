@@ -48,7 +48,7 @@ db.init().then(() => {
   console.log('Database ready');
   app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
-    initPolling();
+    initPolling().catch(err => console.error('Failed to start polling:', err));
   });
 }).catch(err => {
   console.error('Failed to initialize database:', err);

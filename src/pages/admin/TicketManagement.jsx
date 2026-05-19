@@ -129,7 +129,7 @@ const TicketManagement = () => {
             <div className="ticket-card-meta">
               <span><HiUser /> {t.customer_name || 'Anonymous'}</span>
               {t.whatsapp && <span>📱 {t.whatsapp}</span>}
-              <span><HiClock /> {new Date(t.created_at + 'Z').toLocaleDateString()}</span>
+              <span><HiClock /> {new Date(t.created_at).toLocaleDateString()}</span>
             </div>
             {t.assigned_name && <div className="ticket-card-assignee">Assigned to: {t.assigned_name}</div>}
 

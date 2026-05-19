@@ -4,7 +4,7 @@ import FormModal from '../../components/FormModal';
 import { HiChatAlt2, HiShieldCheck, HiExclamationCircle, HiRefresh, HiGlobe } from 'react-icons/hi';
 import { telegramBotsAPI, telegramAPI } from '../../services/api';
 
-const initialForm = { name: '', bot_token: '', admin_chat_id: '', is_active: true, role: 'admin', ai_provider: '', ai_model: '', ai_api_key: '', ai_url: '' };
+const initialForm = { name: '', bot_token: '', admin_chat_id: '', is_active: true, role: 'admin', ai_enabled: false, ai_provider: '', ai_model: '', ai_api_key: '', ai_url: '' };
 const roleLabels = { customer_service: 'CS (AI)', admin: 'Admin', teknisi: 'Teknisi' };
 const roleColors = { customer_service: '#10b981', admin: '#6366f1', teknisi: '#f59e0b' };
 
@@ -16,6 +16,7 @@ const TelegramBots = () => {
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
   const [statuses, setStatuses] = useState({});
+  const [pollingStatus, setPollingStatus] = useState({});
   const [testingAI, setTestingAI] = useState(false);
   const [aiTestResult, setAiTestResult] = useState(null);
 
@@ -79,7 +80,7 @@ const TelegramBots = () => {
     try {
       const payload = { ...form };
       if (payload.role !== 'customer_service') {
-        payload.ai_provider = ''; payload.ai_model = ''; payload.ai_api_key = ''; payload.ai_url = '';
+        payload.ai_enabled = false; payload.ai_provider = ''; payload.ai_model = ''; payload.ai_api_key = ''; payload.ai_url = '';
       }
       if (editing) {
         const { data } = await telegramBotsAPI.update(editing.id, payload);
@@ -126,8 +127,20 @@ const TelegramBots = () => {
   const handleStartPolling = async (id) => {
     try {
       const { data } = await telegramAPI.startPolling(id);
-      if (data.ok) alert('✅ Polling started! Bot listening for messages.');
-      else alert('❌ Polling failed: ' + (data.message || 'Unknown error'));
+      if (data.ok) {
+        setPollingStatus(prev => ({ ...prev, [id]: true }));
+        alert('✅ Polling started! Bot listening for messages.');
+      } else alert('❌ Polling failed: ' + (data.message || 'Unknown error'));
+    } catch (e) { alert('❌ Error: ' + (e.response?.data?.message || e.message)); }
+  };
+
+  const handleStopPolling = async (id) => {
+    try {
+      const { data } = await telegramAPI.stopPolling(id);
+      if (data.ok) {
+        setPollingStatus(prev => ({ ...prev, [id]: false }));
+        alert('⏹️ Polling stopped!');
+      } else alert('❌ Stop failed: ' + (data.message || 'Unknown error'));
     } catch (e) { alert('❌ Error: ' + (e.response?.data?.message || e.message)); }
   };
 
@@ -170,17 +183,17 @@ const TelegramBots = () => {
                   <span className="badge" style={{ background: `${roleColors[bot.role] || '#666'}22`, color: roleColors[bot.role] || '#666', fontSize: 11 }}>
                     {roleLabels[bot.role] || bot.role}
                   </span>
-                  <div
-                    className={`toggle-switch ${bot.is_active ? 'on' : 'off'}`}
-                    onClick={async () => {
-                      try {
-                        const { data } = await telegramBotsAPI.update(bot.id, { ...bot, is_active: !bot.is_active });
-                        setBots(prev => prev.map(b => b.id === bot.id ? data : b));
-                      } catch (e) { alert('❌ Toggle failed: ' + (e.response?.data?.message || e.message)); }
-                    }}
-                  >
-                    <div className="toggle-thumb" />
-                  </div>
+                    <div
+                        className={`toggle-switch ${bot.is_active ? 'on' : 'off'}`}
+                        onClick={async () => {
+                          try {
+                            const { data } = await telegramBotsAPI.update(bot.id, { is_active: !bot.is_active });
+                            setBots(prev => prev.map(b => b.id === bot.id ? { ...b, is_active: data.is_active } : b));
+                          } catch (e) { alert('❌ Toggle failed: ' + (e.response?.data?.message || e.message)); }
+                        }}
+                      >
+                        <div className="toggle-thumb" />
+                      </div>
                 </div>
               </div>
 
@@ -188,13 +201,15 @@ const TelegramBots = () => {
                 Token: <code style={{ fontSize: 12 }}>{bot.bot_token ? bot.bot_token.substring(0, 20) + '...' : 'N/A'}</code>
               </p>
               <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>Chat ID: {bot.admin_chat_id || '-'}</p>
-              {bot.role === 'customer_service' && bot.ai_provider && (
+              {bot.role === 'customer_service' && (
                 <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>
-                  AI: {bot.ai_provider} / {bot.ai_model || 'default'}{bot.ai_url ? ' • Custom URL' : ''}
+                  {bot.ai_enabled && bot.ai_provider
+                    ? <><span style={{ color: '#10b981' }}>🧠 AI Active</span> — {bot.ai_provider} / {bot.ai_model || 'default'}{bot.ai_url ? ' • Custom URL' : ''}</>
+                    : <span style={{ color: 'var(--text-muted)' }}>📋 Template Mode</span>}
                 </p>
               )}
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
                 {statuses[bot.id]?.ok ? (
                   <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--success)', fontSize: 13 }}>
                     <HiShieldCheck /> Active ({statuses[bot.id]?.bot_name})
@@ -206,13 +221,18 @@ const TelegramBots = () => {
                 ) : (
                   <button className="btn btn-ghost btn-sm" onClick={() => checkStatus(bot.id)}><HiRefresh /> Check Status</button>
                 )}
+                {pollingStatus[bot.id] && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#10b981', fontSize: 13 }}>
+                    <HiShieldCheck /> Polling Active
+                  </span>
+                )}
               </div>
 
               <div className="service-card-actions">
                 <button className="btn btn-secondary btn-sm" onClick={() => {
                   setEditing(bot);
                   setAiTestResult(null);
-                  setForm({ name: bot.name, bot_token: bot.bot_token, admin_chat_id: bot.admin_chat_id || '', is_active: bot.is_active, role: bot.role || 'admin', ai_provider: bot.ai_provider || '', ai_model: bot.ai_model || '', ai_api_key: bot.ai_api_key || '', ai_url: bot.ai_url || '' });
+                  setForm({ name: bot.name, bot_token: bot.bot_token, admin_chat_id: bot.admin_chat_id || '', is_active: bot.is_active, role: bot.role || 'admin', ai_enabled: !!bot.ai_enabled, ai_provider: bot.ai_provider || '', ai_model: bot.ai_model || '', ai_api_key: bot.ai_api_key || '', ai_url: bot.ai_url || '' });
                   setShowForm(true);
                 }}>Edit</button>
                 <button className="btn btn-primary btn-sm" onClick={() => handleFullTest(bot)}>Test</button>
@@ -220,9 +240,11 @@ const TelegramBots = () => {
                   <HiGlobe /> Webhook
                 </button>
                 {bot.role === 'customer_service' && (
-                  <button className="btn btn-secondary btn-sm" onClick={() => handleStartPolling(bot.id)} style={{ background: '#9333ea', color: '#fff' }}>
-                    Polling
-                  </button>
+                  pollingStatus[bot.id] ? (
+                    <button className="btn btn-danger btn-sm" onClick={() => handleStopPolling(bot.id)}>⏹ Stop</button>
+                  ) : (
+                    <button className="btn btn-secondary btn-sm" onClick={() => handleStartPolling(bot.id)} style={{ background: '#9333ea', color: '#fff' }}>▶ Polling</button>
+                  )
                 )}
                 <button className="btn btn-danger btn-sm" onClick={() => handleDelete(bot.id)}>Delete</button>
               </div>
@@ -261,6 +283,13 @@ const TelegramBots = () => {
 
           {form.role === 'customer_service' && (
             <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+              {/* AI Enabled Toggle */}
+              <div className="form-group">
+                <label className="checkbox-label">
+                  <input type="checkbox" checked={form.ai_enabled} onChange={e => setForm({ ...form, ai_enabled: e.target.checked })} /> 🧠 Activekan AI (template-only jika nonaktif)
+                </label>
+              </div>
+
               {/* AI Provider */}
               <div className="form-group">
                 <label>AI Provider</label>

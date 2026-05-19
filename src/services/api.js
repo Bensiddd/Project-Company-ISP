@@ -146,7 +146,8 @@ export const telegramAPI = {
   setWebhook: (bot_id, base_url) => api.post('/telegram/set-webhook', { bot_id, base_url }),
   checkAI: (bot_id) => api.post('/telegram/check-ai', { bot_id }),
   checkAIWithValues: (bot_id, overrides) => api.post('/telegram/check-ai', { bot_id, ...overrides }),
-  startPolling: (bot_id) => api.post('/telegram/start-polling', { bot_id })
+  startPolling: (bot_id) => api.post('/telegram/start-polling', { bot_id }),
+  stopPolling: (bot_id) => api.post('/telegram/stop-polling', { bot_id })
 };
 
 // Dashboard endpoints

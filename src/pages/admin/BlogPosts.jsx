@@ -34,7 +34,7 @@ const BlogPosts = () => {
     { key: 'category', label: 'Category', render: item => <span className="badge" style={{ background: 'var(--bg-elevated)', color: 'var(--primary-light)' }}>{item.category}</span> },
     { key: 'author_name', label: 'Author' },
     { key: 'status', label: 'Status', render: item => <span className={`status-pill ${item.status}`}>{item.status}</span> },
-    { key: 'published_at', label: 'Published', render: item => item.published_at ? new Date(item.published_at + 'Z').toLocaleDateString() : '—' }
+    { key: 'published_at', label: 'Published', render: item => item.published_at ? new Date(item.published_at).toLocaleDateString() : '—' }
   ];
 
   const handleEdit = async (post) => {

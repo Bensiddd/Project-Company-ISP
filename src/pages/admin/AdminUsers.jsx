@@ -35,7 +35,7 @@ const AdminUsers = () => {
       return <span className="badge" style={{ background: `${colors[item.role] || '#666'}20`, color: colors[item.role] || '#666' }}>{item.role.replace('_', ' ')}</span>;
     }},
     { key: 'is_active', label: 'Status', render: item => <span className={`status-pill ${item.is_active ? 'active' : 'inactive'}`}>{item.is_active ? 'Active' : 'Inactive'}</span> },
-    { key: 'last_login', label: 'Last Login', render: item => item.last_login ? new Date(item.last_login + 'Z').toLocaleDateString() : '—' }
+    { key: 'last_login', label: 'Last Login', render: item => item.last_login ? new Date(item.last_login).toLocaleDateString() : '—' }
   ];
 
   const handleEdit = (user) => { setEditing(user); setForm({ username: user.username, email: user.email, full_name: user.full_name, role: user.role, is_active: user.is_active, password: '' }); setShowForm(true); };

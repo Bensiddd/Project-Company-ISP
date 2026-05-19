@@ -116,7 +116,7 @@ const ContactMessages = () => {
       // Force scroll to bottom after own reply
       setTimeout(() => { if (msgContainerRef.current) msgContainerRef.current.scrollTop = msgContainerRef.current.scrollHeight; }, 50);
     } catch (e) {
-      alert('❌ Gagal kirim: ' + (e.response?.data?.description || e.message));
+      alert('❌ Gagal kirim: ' + (e.response?.data?.message || e.response?.data?.description || e.message));
     } finally { setConvoSending(false); }
   };
 
@@ -258,7 +258,7 @@ const ContactMessages = () => {
               <div className="message-item-content">
                 <div className="message-item-top">
                   <span className="message-item-name">{convo.user_name || 'Unknown'}</span>
-                  <span className="message-item-time" style={{ fontSize: 11 }}>{convo.updated_at ? new Date(convo.updated_at + 'Z').toLocaleString() : ''}</span>
+                  <span className="message-item-time" style={{ fontSize: 11 }}>{convo.updated_at ? new Date(convo.updated_at).toLocaleString() : ''}</span>
                 </div>
                 <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginBottom: 2 }}>
                   <span className="badge" style={{ background: convo.status === 'ai' ? '#10b98122' : '#f59e0b22', color: convo.status === 'ai' ? '#10b981' : '#f59e0b', fontSize: 10, padding: '1px 6px' }}>
@@ -331,7 +331,7 @@ const ContactMessages = () => {
                   }}>
                     <div style={{ fontSize: 10, opacity: 0.7, marginBottom: 4, display: 'flex', gap: 4 }}>
                       {msg.role === 'user' ? '👤 User' : msg.role === 'agent' ? '👨‍💼 CS' : '🤖 Bot'}
-                      <span>{msg.created_at ? new Date(msg.created_at + 'Z').toLocaleTimeString() : ''}</span>
+                      <span>{msg.created_at ? new Date(msg.created_at).toLocaleTimeString() : ''}</span>
                     </div>
                     {msg.message}
                   </div>

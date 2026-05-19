@@ -4,26 +4,26 @@ import { authenticate, optionalAuth } from '../middleware/auth.js';
 
 const router = Router();
 
-router.get('/', optionalAuth, (_req, res) => {
-  const settings = db.get('SELECT * FROM website_settings WHERE id = 1');
+router.get('/', optionalAuth, async (_req, res) => {
+  const settings = await db.get('SELECT * FROM website_settings WHERE id = 1');
   res.json(settings || {});
 });
 
-router.put('/', authenticate, (req, res) => {
+router.put('/', authenticate, async (req, res) => {
   const { company_name, tagline, description, address, phone, email, logo_url, favicon_url, facebook_url, twitter_url, instagram_url, linkedin_url, youtube_url } = req.body;
-  const existing = db.get('SELECT id FROM website_settings WHERE id = 1');
+  const existing = await db.get('SELECT id FROM website_settings WHERE id = 1');
   if (existing) {
-    db.run(
+    await db.run(
       'UPDATE website_settings SET company_name=?, tagline=?, description=?, address=?, phone=?, email=?, logo_url=?, favicon_url=?, facebook_url=?, twitter_url=?, instagram_url=?, linkedin_url=?, youtube_url=?, updated_at=CURRENT_TIMESTAMP WHERE id=1',
       [company_name || '', tagline || '', description || '', address || '', phone || '', email || '', logo_url || '', favicon_url || '', facebook_url || '', twitter_url || '', instagram_url || '', linkedin_url || '', youtube_url || '']
     );
   } else {
-    db.insert(
+    await db.insert(
       'INSERT INTO website_settings (company_name, tagline, description, address, phone, email, logo_url, favicon_url, facebook_url, twitter_url, instagram_url, linkedin_url, youtube_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [company_name || '', tagline || '', description || '', address || '', phone || '', email || '', logo_url || '', favicon_url || '', facebook_url || '', twitter_url || '', instagram_url || '', linkedin_url || '', youtube_url || '']
     );
   }
-  res.json(db.get('SELECT * FROM website_settings WHERE id = 1'));
+  res.json(await db.get('SELECT * FROM website_settings WHERE id = 1'));
 });
 
 export default router;
