@@ -210,7 +210,9 @@ async function processAI(bot, chatId, userText, userName) {
     }
 
     const history = db.all('SELECT role, message FROM telegram_messages WHERE conversation_id=? ORDER BY id DESC LIMIT 10', [convo.id]).reverse();
-    const result = await callAI(bot.ai_provider || 'openai', bot.ai_model || '', bot.ai_api_key, userText, bot.ai_url, history);
+    const defaultModels = { openai: 'gpt-4o-mini', openrouter: 'openai/gpt-4o-mini', gemini: 'gemini-2.0-flash', claude: 'claude-3-haiku-20240307', custom: '' };
+    const resolvedModel = bot.ai_model || defaultModels[bot.ai_provider] || '';
+    const result = await callAI(bot.ai_provider || 'openai', resolvedModel, bot.ai_api_key, userText, bot.ai_url, history);
     
     if (result.ok) {
       const reply = result.text;
@@ -502,7 +504,7 @@ router.post('/check-ai', authenticate, async (req, res) => {
 
   console.log(`[AI Check] Provider: ${provider} | Model: ${resolvedModel || '(default)'} | URL: ${baseUrl || '(default)'}`);
 
-  const result = await callAI(provider, model, apiKey, 'Halo, balas dengan "OK" saja.', baseUrl);
+  const result = await callAI(provider, resolvedModel, apiKey, 'Halo, balas dengan "OK" saja.', baseUrl);
   console.log(`[AI Check] Result:`, result);
 
   const modelHints = {
