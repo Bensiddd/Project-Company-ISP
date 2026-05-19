@@ -56,12 +56,12 @@ async function callOpenAI(model, apiKey, userMessage, baseUrl, skipV1 = false, h
     });
     clearTimeout(timeout);
     if (!resp.ok) {
-      let errMsg = `HTTP ${resp.status} ${resp.statusText}`;
-      try { const err = await resp.json(); errMsg = err.error?.message || err.error || errMsg; } catch {}
-      return { ok: false, error: errMsg };
+      let errBody = '';
+      try { errBody = JSON.stringify(await resp.json()).substring(0, 200); } catch {}
+      return { ok: false, error: `HTTP ${resp.status}: ${errBody || resp.statusText}` };
     }
     const json = await resp.json();
-    if (json.error) return { ok: false, error: json.error.message };
+    if (json.error) return { ok: false, error: `API error: ${JSON.stringify(json.error).substring(0, 200)}` };
     return { ok: true, text: json.choices?.[0]?.message?.content || '' };
   } catch (e) { return { ok: false, error: e.name === 'AbortError' ? 'Request timed out (20s)' : e.message }; }
 }
@@ -87,12 +87,12 @@ async function callGemini(model, apiKey, userMessage, baseUrl, history = []) {
     });
     clearTimeout(timeout);
     if (!resp.ok) {
-      let errMsg = `HTTP ${resp.status} ${resp.statusText}`;
-      try { const err = await resp.json(); errMsg = err.error?.message || errMsg; } catch {}
-      return { ok: false, error: errMsg };
+      let errBody = '';
+      try { errBody = JSON.stringify(await resp.json()).substring(0, 200); } catch {}
+      return { ok: false, error: `HTTP ${resp.status}: ${errBody || resp.statusText}` };
     }
     const json = await resp.json();
-    if (json.error) return { ok: false, error: json.error.message };
+    if (json.error) return { ok: false, error: `API error: ${JSON.stringify(json.error).substring(0, 200)}` };
     return { ok: true, text: json.candidates?.[0]?.content?.parts?.[0]?.text || '' };
   } catch (e) { return { ok: false, error: e.name === 'AbortError' ? 'Request timed out (20s)' : e.message }; }
 }
@@ -118,12 +118,12 @@ async function callClaude(model, apiKey, userMessage, baseUrl, history = []) {
     });
     clearTimeout(timeout);
     if (!resp.ok) {
-      let errMsg = `HTTP ${resp.status} ${resp.statusText}`;
-      try { const err = await resp.json(); errMsg = err.error?.message || err.error || errMsg; } catch {}
-      return { ok: false, error: errMsg };
+      let errBody = '';
+      try { errBody = JSON.stringify(await resp.json()).substring(0, 200); } catch {}
+      return { ok: false, error: `HTTP ${resp.status}: ${errBody || resp.statusText}` };
     }
     const json = await resp.json();
-    if (json.error) return { ok: false, error: json.error.message };
+    if (json.error) return { ok: false, error: `API error: ${JSON.stringify(json.error).substring(0, 200)}` };
     return { ok: true, text: json.content?.[0]?.text || '' };
   } catch (e) { return { ok: false, error: e.name === 'AbortError' ? 'Request timed out (20s)' : e.message }; }
 }
@@ -147,9 +147,9 @@ async function callCustom(url, apiKey, userMessage, model, history = []) {
     });
     clearTimeout(timeout);
     if (!resp.ok) {
-      let errMsg = `HTTP ${resp.status}`;
-      try { const err = await resp.json(); errMsg = err.error?.message || err.error || errMsg; } catch {}
-      return { ok: false, error: errMsg };
+      let errBody = '';
+      try { errBody = JSON.stringify(await resp.json()).substring(0, 200); } catch {}
+      return { ok: false, error: `HTTP ${resp.status}: ${errBody || resp.statusText}` };
     }
     const json = await resp.json();
     return { ok: true, text: json.choices?.[0]?.message?.content || json.response || json.reply || json.text || json.message || JSON.stringify(json) };
