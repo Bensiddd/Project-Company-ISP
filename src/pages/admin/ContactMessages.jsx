@@ -168,7 +168,6 @@ const ContactMessages = () => {
   if (convosLoading && convos.length === 0) {
     return (
       <div>
-        <div className="data-table-header"><h1>Telegram Messages</h1></div>
         <div className="data-table-skeleton">{[1,2,3].map(i => <div key={i} className="skeleton-row"><div className="skeleton-bar" style={{ height: 60 }} /></div>)}</div>
       </div>
     );
@@ -246,10 +245,6 @@ const ContactMessages = () => {
         )}
       </AnimatePresence>
 
-      <div className="data-table-header">
-        <div><h1>Telegram Messages {convoUnread > 0 && <span className="data-table-count">({convoUnread} unread)</span>}</h1></div>
-      </div>
-
       <div className="messages-layout">
         <div className={'messages-list' + (selectedConvo ? ' hidden-mobile' : '')}>
           {convos.map((convo, i) => (
@@ -320,47 +315,47 @@ const ContactMessages = () => {
                 </div>
               </div>
 
-              <div className="message-detail-body" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                <div ref={msgContainerRef} style={{ flex: 1, overflowY: 'auto', padding: '12px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {convoMsgs.map((msg, i) => (
-                    <div key={msg.id} style={{
-                      alignSelf: msg.role === 'user' ? 'flex-start' : 'flex-end',
-                      maxWidth: '80%',
-                      background: msg.role === 'user' ? 'var(--bg-card)' : msg.role === 'agent' ? '#1e93de' : '#10b981',
-                      color: msg.role === 'user' ? 'var(--text)' : '#fff',
-                      padding: '10px 14px',
-                      borderRadius: msg.role === 'user' ? '4px 16px 16px 4px' : '16px 4px 4px 16px',
-                      fontSize: 14,
-                      lineHeight: 1.5,
-                      wordBreak: 'break-word'
-                    }}>
-                      <div style={{ fontSize: 10, opacity: 0.7, marginBottom: 4, display: 'flex', gap: 4 }}>
-                        {msg.role === 'user' ? '👤 User' : msg.role === 'agent' ? '👨‍💼 CS' : '🤖 Bot'}
-                        <span>{msg.created_at ? new Date(msg.created_at + 'Z').toLocaleTimeString() : ''}</span>
-                      </div>
-                      {msg.message}
+              {/* Scrollable messages area */}
+              <div ref={msgContainerRef} className="message-detail-body" style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 24px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {convoMsgs.map((msg, i) => (
+                  <div key={msg.id} style={{
+                    alignSelf: msg.role === 'user' ? 'flex-start' : 'flex-end',
+                    maxWidth: '90%',
+                    background: msg.role === 'user' ? 'var(--bg-card)' : msg.role === 'agent' ? '#1e93de' : '#10b981',
+                    color: msg.role === 'user' ? 'var(--text)' : '#fff',
+                    padding: '10px 14px',
+                    borderRadius: msg.role === 'user' ? '4px 16px 16px 4px' : '16px 4px 4px 16px',
+                    fontSize: 14,
+                    lineHeight: 1.5,
+                    wordBreak: 'break-word'
+                  }}>
+                    <div style={{ fontSize: 10, opacity: 0.7, marginBottom: 4, display: 'flex', gap: 4 }}>
+                      {msg.role === 'user' ? '👤 User' : msg.role === 'agent' ? '👨‍💼 CS' : '🤖 Bot'}
+                      <span>{msg.created_at ? new Date(msg.created_at + 'Z').toLocaleTimeString() : ''}</span>
                     </div>
-                  ))}
-                  <div ref={chatEndRef} />
-                </div>
-
-                <div className="message-reply-box" style={{ borderTop: '1px solid var(--border)', marginTop: 'auto' }}>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <textarea className="form-control" rows="2" value={convoReply} onChange={e => setConvoReply(e.target.value)}
-                      placeholder={selectedConvo.status === 'ai' ? 'AI mode aktif. Switch ke Human untuk reply manual.' : 'Ketik balasan...'}
-                      disabled={selectedConvo.status === 'ai'}
-                      onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleConvoReply(); } }}
-                      style={{ flex: 1 }} />
-                    <button className="btn btn-primary" onClick={handleConvoReply}
-                      disabled={convoSending || !convoReply.trim() || selectedConvo.status === 'ai'}
-                      style={{ alignSelf: 'flex-end', height: 42 }}>
-                      {convoSending ? '...' : 'Kirim'}
-                    </button>
+                    {msg.message}
                   </div>
-                  {selectedConvo.status === 'ai' && (
-                    <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>ℹ️ AI auto-reply aktif. Klik "Switch to Human" untuk membalas manual.</p>
-                  )}
+                ))}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Reply box - always visible at bottom */}
+              <div className="message-reply-box">
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <textarea className="form-control" rows="2" value={convoReply} onChange={e => setConvoReply(e.target.value)}
+                    placeholder={selectedConvo.status === 'ai' ? 'AI mode aktif. Switch ke Human untuk reply manual.' : 'Ketik balasan...'}
+                    disabled={selectedConvo.status === 'ai'}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleConvoReply(); } }}
+                    style={{ flex: 1 }} />
+                  <button className="btn btn-primary" onClick={handleConvoReply}
+                    disabled={convoSending || !convoReply.trim() || selectedConvo.status === 'ai'}
+                    style={{ alignSelf: 'flex-end', height: 42 }}>
+                    {convoSending ? '...' : 'Kirim'}
+                  </button>
                 </div>
+                {selectedConvo.status === 'ai' && (
+                  <p style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>ℹ️ AI auto-reply aktif. Klik "Switch to Human" untuk membalas manual.</p>
+                )}
               </div>
             </motion.div>
           ) : (
