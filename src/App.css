@@ -50,7 +50,7 @@ main.admin-layout { padding-top: 0; }
 .stat-change { position: absolute; top: 16px; right: 16px; padding: 2px 8px; border-radius: 9999px; font-size: 11px; font-weight: 700; }
 
 /* ── Charts ── */
-.admin-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.admin-charts { display: grid; grid-template-columns: 1fr; gap: 24px; }
 .chart-card { background: var(--bg-card); border-radius: var(--radius-lg); border: 1px solid var(--border); padding: 24px; }
 .chart-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .chart-card-header h2 { font-size: 16px; font-weight: 600; color: var(--text-primary); }
@@ -74,6 +74,96 @@ main.admin-layout { padding-top: 0; }
 .activity-action { font-size: 14px; font-weight: 500; color: var(--text-primary); }
 .activity-detail { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
 .activity-time { display: flex; align-items: center; gap: 4px; font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+
+.activity-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding-top: 1.25rem;
+  margin-top: 1.25rem;
+  border-top: 1px solid var(--border);
+}
+
+.pagination-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.6rem 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: inherit;
+  min-height: 2.25rem;
+}
+
+.pagination-btn:hover:not(:disabled) {
+  background: var(--gradient-primary);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 15px rgba(99, 102, 241, 0.3);
+  transform: translateY(-1px);
+}
+
+.pagination-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.pagination-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.pagination-dots {
+  display: flex;
+  gap: 0.35rem;
+}
+
+.pagination-dot {
+  width: 2.25rem;
+  height: 2.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: inherit;
+}
+
+.pagination-dot:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: rgba(99, 102, 241, 0.08);
+}
+
+.pagination-dot.active {
+  background: var(--gradient-primary);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+}
+
+.activity-page-info {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  background: var(--bg-secondary);
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-sm);
+  font-weight: 600;
+}
+
 
 /* ── DataTable ── */
 .data-table-wrapper { background: var(--bg-card); border-radius: var(--radius-lg); border: 1px solid var(--border); overflow: clip; }
