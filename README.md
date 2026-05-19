@@ -79,7 +79,7 @@ server/
 - Hero section MAZNET dengan Particles canvas animation
 - About + 4 value cards (Cepat, Terpercaya, Terjangkau, Komunitas)
 - Coverage (Wanasari, Wanajaya, Selang, Kab. Bekasi)
-- Services (3 paket: Starter Rp160rb, Professional Rp400rb, Enterprise custom)
+- Services bisa custom packet layanan
 - Blog preview dari API
 - Contact form dengan WhatsApp field
 - StatsCounter (500+ pelanggan, 98% uptime, 10+ wilayah, 24/7 support)
@@ -94,7 +94,7 @@ server/
 ### 🤖 Multi-Bot Telegram
 - Tambah multiple bot dengan token dan admin_chat_id
 - 3 role per bot: admin, customer_service (AI), teknisi
-- AI provider per bot: OpenAI, Gemini, Claude, OpenRouter, atau Custom API
+- AI provider bot: OpenAI, Gemini, Claude, OpenRouter, atau Custom API (integrasi bot dengan AI)
 - Custom API URL — override endpoint untuk setiap provider (Ollama, vLLM, dll.)
 - **Long Polling** (interval 3 detik) — tanpa perlu URL publik
 - **Webhook** — untuk deployment publik (otomatis stop polling)
