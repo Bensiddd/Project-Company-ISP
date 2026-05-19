@@ -123,7 +123,7 @@ const AdminDashboard = () => {
             <div className="admin-topbar-left">
               <HiShieldCheck size={18} style={{ color: 'var(--primary)', opacity: 0.6 }} />
               <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                {location.pathname === '/admin' ? 'Overview' : location.pathname.replace('/admin/', '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
+                {location.pathname === '/admin' ? 'Overview' : location.pathname === '/admin/messages' ? 'Telegram Messages' : location.pathname.replace('/admin/', '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}
               </span>
             </div>
             <div className="admin-topbar-right" ref={dropdownRef}>
