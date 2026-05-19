@@ -5,11 +5,12 @@ Sistem manajemen **ISP** full-stack dengan landing page publik, dashboard admin 
 ## Tech Stack
 
 - **Frontend**: React 18 + Vite 4 + Framer Motion + React Router 6 + Axios + Recharts
-- **Backend**: Express.js + sql.js (SQLite murni JavaScript, tanpa native module)
+- **Backend**: Express.js + mysql2 (MySQL 8 via Docker)
 - **Bot Telegram**: native `fetch` (Node 18+), long polling (3s) + webhook
-- **AI**: Multi-provider (OpenAI, Gemini, Claude, OpenRouter, Custom API)
+- **AI**: Multi-provider (OpenAI, Gemini, Claude, OpenRouter, Custom API) — toggle per bot, template default
 - **Mikrotik**: node-routeros (RouterOS API)
-- **Database**: SQLite (file-based, auto-create)
+- **Database**: MySQL 8 (Docker)
+- **Docker**: mysql:8 + phpMyAdmin, semua port bind 127.0.0.1 (loopback)
 
 ## Struktur Frontend
 
@@ -47,10 +48,11 @@ src/
 
 ```
 server/
-├── index.js              # Express entry point, route mounting (15 route), init polling
-├── db.js                 # sql.js wrapper: init/run/get/all/insert/exec + logActivity
-├── migrate.js            # Schema 15 tabel + ALTER TABLE + unique index + migration
-├── seed.js               # Data awal MAZNET (5 admin users, 4 coverage, 3 paket, dll.)
+├── index.js              # Express entry point, route mounting (16 route), init polling
+├── db.js                 # mysql2/promise wrapper: init/run/get/all/insert/exec + logActivity
+├── migrate.js            # Schema 16 tabel + ALTER TABLE + unique index + migration
+├── seed.js               # Data awal MAZNET (5 admin, 4 coverage, 3 paket, telegram_bots, dll.)
+├── .env                  # DB_HOST=127.0.0.1, DB_USER=root, DB_PASSWORD=root, DB_NAME=maznet
 ├── middleware/auth.js     # JWT generate/authenticate/optionalAuth
 ├── routes/
 │   ├── auth.js           # Login / register / logout / me + activity log
@@ -61,16 +63,17 @@ server/
 │   ├── clients.js        # CRUD clients
 │   ├── testimonials.js   # CRUD testimonials
 │   ├── messages.js       # CRUD contact messages + Telegram notif
-│   ├── tickets.js        # CRUD tickets + replies, dynamic UPDATE, teknisi filter
-│   ├── telegram.js       # Polling, webhook, send, test, status, check-ai, set-webhook, callback_query, state machine (6 state)
+│   ├── tickets.js        # CRUD tickets + replies, dynamic UPDATE, teknisi filter, telegram_conversation_id
+│   ├── telegram.js       # Polling, webhook, send, test, status, set-webhook, stop-polling, callback_query, state machine (5 state), cooldown 6 jam, template/AI
 │   ├── telegram-conversations.js  # Conversations: list, messages, reply, toggle mode, delete
-│   ├── bot-settings.js   # CRUD telegram bots (token, role, AI provider/key/URL)
+│   ├── bot-settings.js   # CRUD telegram bots (token, role, AI provider/key/URL, ai_enabled toggle)
 │   ├── settings.js       # Website settings
 │   ├── dashboard.js      # Aggregate stats + recent activity
 │   └── mikrotik.js       # RouterOS API: settings, status, interfaces, traffic, logs, PPPoE, history
 ├── services/
 │   └── ai-providers.js   # OpenAI, Gemini, Claude, Custom API — masing-masing timeout 20s
-└── data/database.sqlite  # File database (auto-create)
+├── docker-compose.yml    # MySQL 8 + phpMyAdmin (port bind 127.0.0.1)
+└── data/database.sqlite.backup-20260519  # Backup SQLite sebelum migrasi ke MySQL
 ```
 
 ## Fitur Lengkap
@@ -93,24 +96,26 @@ server/
 
 ### 🤖 Multi-Bot Telegram
 - Tambah multiple bot dengan token dan admin_chat_id
-- 3 role per bot: admin, customer_service (AI), teknisi
-- AI provider bot: OpenAI, Gemini, Claude, OpenRouter, atau Custom API (integrasi bot dengan AI)
-- Custom API URL — override endpoint untuk setiap provider (Ollama, vLLM, dll.)
+- 3 role per bot: admin, customer_service (AI/CS), teknisi
+- **AI toggle per bot** (`ai_enabled`) — default template-based, opsional AI multi-provider
+- AI provider: OpenAI, Gemini, Claude, OpenRouter, atau Custom API (Ollama, vLLM, dll.)
 - **Long Polling** (interval 3 detik) — tanpa perlu URL publik
 - **Webhook** — untuk deployment publik (otomatis stop polling)
-- **Cek Status Ticket** — masukkan ID ticket → bot tampilkan status + konfirmasi close
-- Tombol Test, Check Status, Check AI (dengan preview), Set Webhook, Start Polling per bot
+- **Stop Polling** — button + endpoint `POST /stop-polling`, polling status indicator
+- Tombol Test, Check AI (preview), Set Webhook, Start/Stop Polling per bot
+- **Cooldown 6 jam** per conversation — auto-clear jika ticket terkait closed/deleted
 - Per-conversation lock cegah duplicate AI processing
 - Deduplikasi update_id cegah reproses pesan yang sama
 
-### 💬 Telegram CS dengan State Machine (6 state)
+### 💬 Telegram CS dengan State Machine (5 state)
 - Menu interaktif dengan **inline keyboard**:
   - 🎫 **Buat Ticket** → tulis keluhan → ticket otomatis
   - 📶 **Upgrade Bandwidth** → input ID pelanggan → pilih paket → ticket upgrade
   - 🔧 **Instalasi Baru** → input alamat → share lokasi (maps) → ticket instalasi
-  - 🔍 **Cek Status Ticket** → lihat status + konfirmasi close
   - 💬 **Bicara dengan CS** → dialihkan ke human mode
 - Mode AI/Human per percakapan + **countdown 3 detik** saat switch Human→AI
+- **Cooldown 6 jam** setelah ticket dibuat — bypass via talk_to_cs, menu, batal, /start, /stop
+- Cooldown **ticket-aware** — auto-clear jika ticket dihapus atau status closed
 - Semua pesan tersimpan di database + unread counter
 
 ### 💬 Contact Messages (Dashboard)
@@ -148,6 +153,7 @@ server/
 
 ### 🤖 AI Webhook
 - Multi-provider: OpenAI, Gemini, Claude, OpenRouter, Custom API
+- **Toggle per bot** (`ai_enabled`) — template default saat AI nonaktif: "Ada yang bisa saya bantu?" + MAIN_MENU
 - Default model per provider (gpt-4o-mini, gemini-2.0-flash, claude-3-haiku)
 - History context 10 pesan terakhir
 - Timeout 20 detik per request (AbortController)
@@ -155,7 +161,14 @@ server/
 
 ## Database
 
-Database SQLite (`server/data/database.sqlite`) dengan 15 tabel:
+**MySQL 8** via Docker (`mysql:8` image). Semua port bind ke `127.0.0.1` (loopback — tidak bisa diakses dari luar).
+
+| Service | Port | Akses |
+|---|---|---|
+| MySQL | `127.0.0.1:3306` | root / root |
+| phpMyAdmin | `http://127.0.0.1:8080` | root / root |
+
+16 tabel:
 
 | Tabel | Fungsi |
 |---|---|
@@ -166,44 +179,65 @@ Database SQLite (`server/data/database.sqlite`) dengan 15 tabel:
 | `clients` | Data klien (industry, contact person) |
 | `testimonials` | Testimonial (rating 1-5, approval, FK → clients) |
 | `contact_messages` | Pesan form kontak (whatsapp, telegram_chat_id) |
-| `tickets` / `ticket_replies` | Tiket & balasan (4 tipe, 4 status, 3 priority) |
-| `telegram_bots` | Multi-bot config (token, role, AI provider/key/model/URL) |
-| `telegram_conversations` | Percakapan per user (state machine, pending_data, unread) |
-| `telegram_messages` | Riwayat pesan (user/bot/agent) |
+| `tickets` | Tiket (4 tipe, 4 status, 3 priority, telegram_conversation_id) |
+| `ticket_replies` | Balasan ticket (FK → tickets, ON DELETE CASCADE) |
+| `telegram_bots` | Multi-bot config (token, role, ai_enabled toggle, AI provider/key/model/URL) |
+| `telegram_conversations` | Percakapan per user (state machine, pending_data, cooldown_until, unread) |
+| `telegram_messages` | Riwayat pesan (user/bot) |
 | `website_settings` | Pengaturan website (company, contact, social media) |
-| `mikrotik_settings` | Konfigurasi koneksi RouterOS (host, user, password terenkripsi) |
+| `mikrotik_settings` | Konfigurasi koneksi RouterOS (host, user, password terenkripsi base64) |
 | `traffic_history` | Riwayat traffic per interface (RX/TX per sample) |
 | `activity_logs` | Log aktivitas admin (type, action, detail, user_id) |
+
+## Prasyarat
+
+- **Docker Desktop** (untuk MySQL 8 + phpMyAdmin)
+- **Node.js 18+** (native `fetch` support)
 
 ## Menjalankan
 
 ```bash
-# Install dependencies
-npm install                    # Frontend dependencies
-cd server && npm install       # Backend dependencies
+# 1. Clone & install dependencies
+git clone <repo-url> maznet
+cd maznet
+npm install                      # Frontend dependencies
+cd server && npm install         # Backend dependencies
 cd ..
 
-# Inisialisasi database
-node server/migrate.js         # Create 15 tabel
-node server/seed.js            # Seed data awal MAZNET
+# 2. Copy environment
+cp server/.env.example server/.env   # Sesuaikan jika perlu
 
-# Development (jalankan 2 terminal)
-npm run dev                    # Frontend (Vite, port 5173)
-node server/index.js           # Backend (Express, port 3001)
+# 3. Start MySQL + phpMyAdmin
+docker compose up -d                 # MySQL (3306) + phpMyAdmin (8080)
+
+# 4. Inisialisasi database
+node server/migrate.js               # Create 16 tabel
+node server/seed.js                  # Seed data awal MAZNET
+
+# 5. Development (2 terminal)
+npm run dev                          # Frontend Vite (port 5173)
+node server/index.js                 # Backend Express (port 3001)
 ```
 
 Build production:
 ```bash
-npm run build                  # Build frontend ke dist/
+npm run build                        # Build frontend ke dist/
 ```
 Frontend di-*serve* dari Express sebagai static files.
 
+**API:** `http://localhost:3001`
+**phpMyAdmin:** `http://127.0.0.1:8080` (root / root)
+**Login:** `admin@maznet.id` / `admin123`
+
 ## Catatan Penting
 
-- Setiap **restart server** → polling otomatis untuk semua bot `customer_service` aktif (interval 3 detik)
-- Setelah **migrate/seed** → **restart server** (DB in-memory perlu reload)
-- Password Mikrotik disimpan di database dalam base64 (bukan encryption)
-- Bot hanya bisa kirim pesan ke user yang pernah chat bot sebelumnya
-- `admin123` adalah password default untuk semua seed admin users
-- Dark theme: `#0a0a0f` base, Plus Jakarta Sans font
-- Pastikan Node.js 18+ untuk native `fetch` support
+- **Docker port bind**: Semua port Docker bind ke `127.0.0.1` (loopback) — tidak bisa diakses dari luar (kecuali port-forwarding)
+- **Restart backend** → polling otomatis untuk semua bot `customer_service` aktif (interval 3 detik)
+- **AI template default**: Bot baru `ai_enabled=0` — hanya balas dengan template "Ada yang bisa saya bantu?" + MAIN_MENU. Aktifkan AI via toggle di dashboard
+- **Cooldown 6 jam**: Setelah membuat ticket/install/upgrade via Telegram. Auto-clear jika ticket dihapus atau status closed
+- **Cooldown bypass**: `talk_to_cs`, `end_session`, `back_to_menu`, `/start`, `/stop`, menu, batal — tidak kena cooldown
+- **Password Mikrotik**: disimpan di database dalam base64 (bukan encryption sesungguhnya)
+- **Bot hanya bisa kirim pesan** ke user yang pernah chat bot sebelumnya
+- **`admin123`** adalah password default untuk semua seed admin users
+- **Dark theme**: `#0a0a0f` base, Plus Jakarta Sans font, glassmorphism
+- **Node.js 18+** diperlukan untuk native `fetch` support
