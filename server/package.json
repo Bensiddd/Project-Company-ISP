@@ -1,0 +1,26 @@
+{
+  "name": "maznet-backend",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node index.js",
+    "migrate": "node migrate.js",
+    "seed": "node seed.js",
+    "setup": "node migrate.js && node seed.js",
+    "dev": "nodemon --ignore 'data/*.sqlite' index.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.1",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "node-routeros": "^1.6.9",
+    "sql.js": "^1.10.3",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.14"
+  }
+}

@@ -1,0 +1,288 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1333.9859999999999 1086" width="1333.9859999999999" height="1086" style="--bg:#282a36;--fg:#f8f8f2;--line:#6272a4;--accent:#bd93f9;--muted:#6272a4;background:var(--bg)">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&amp;display=swap');
+  text { font-family: 'Inter', system-ui, sans-serif; }
+  .mono { font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', ui-monospace, monospace; }
+  svg {
+    /* Derived from --bg and --fg (overridable via --line, --accent, etc.) */
+    --_text:          var(--fg);
+    --_text-sec:      var(--muted, color-mix(in srgb, var(--fg) 60%, var(--bg)));
+    --_text-muted:    var(--muted, color-mix(in srgb, var(--fg) 40%, var(--bg)));
+    --_text-faint:    color-mix(in srgb, var(--fg) 25%, var(--bg));
+    --_line:          var(--line, color-mix(in srgb, var(--fg) 50%, var(--bg)));
+    --_arrow:         var(--accent, color-mix(in srgb, var(--fg) 85%, var(--bg)));
+    --_node-fill:     var(--surface, color-mix(in srgb, var(--fg) 3%, var(--bg)));
+    --_node-stroke:   var(--border, color-mix(in srgb, var(--fg) 20%, var(--bg)));
+    --_group-fill:    var(--bg);
+    --_group-hdr:     color-mix(in srgb, var(--fg) 5%, var(--bg));
+    --_inner-stroke:  color-mix(in srgb, var(--fg) 12%, var(--bg));
+    --_key-badge:     color-mix(in srgb, var(--fg) 10%, var(--bg));
+  }
+</style>
+<defs>
+</defs>
+<polyline class="er-relationship" data-entity1="admin_users" data-entity2="blog_posts" data-cardinality1="one" data-cardinality2="zero-many" data-identifying="true" data-label="writes" points="246.2,573 473.866,573" fill="none" stroke="var(--_line)" stroke-width="1" />
+<polyline class="er-relationship" data-entity1="clients" data-entity2="testimonials" data-cardinality1="one" data-cardinality2="zero-many" data-identifying="true" data-label="gives" points="858.8,189 1074.586,189" fill="none" stroke="var(--_line)" stroke-width="1" />
+<polyline class="er-relationship" data-entity1="admin_users" data-entity2="contact_messages" data-cardinality1="one" data-cardinality2="zero-many" data-identifying="true" data-label="handles" points="246.2,650.3333333333334 256.2,650.3333333333333 256.2,919 473.866,919" fill="none" stroke="var(--_line)" stroke-width="1" />
+<g class="entity" data-id="admin_users" data-label="admin_users">
+  <rect x="40" y="495.6666666666667" width="206.2" height="232" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <rect x="40" y="495.6666666666667" width="206.2" height="34" rx="0" ry="0" fill="var(--_group-hdr)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="143.1" y="512.6666666666667" text-anchor="middle" font-size="13" font-weight="700" fill="var(--_text)" dy="4.55">admin_users</text>
+  <line x1="40" y1="529.6666666666667" x2="246.2" y2="529.6666666666667" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <rect x="46" y="533.6666666666667" width="22.31" height="14" rx="2" ry="2" fill="var(--_key-badge)" />
+  <text x="57.155" y="540.6666666666667" text-anchor="middle" dy="0.35em" font-size="9" font-weight="600" fill="var(--_text-sec)">PK</text>
+  <text x="76.31" y="540.6666666666667" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">int</tspan></text>
+  <text x="238.2" y="540.6666666666667" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">id</tspan></text>
+  <text x="48" y="562.6666666666667" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(50)</tspan></text>
+  <text x="238.2" y="562.6666666666667" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">username</tspan></text>
+  <text x="48" y="584.6666666666667" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(255)</tspan></text>
+  <text x="238.2" y="584.6666666666667" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">password_hash</tspan></text>
+  <text x="48" y="606.6666666666667" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(100)</tspan></text>
+  <text x="238.2" y="606.6666666666667" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">email</tspan></text>
+  <text x="48" y="628.6666666666667" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(100)</tspan></text>
+  <text x="238.2" y="628.6666666666667" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">full_name</tspan></text>
+  <text x="48" y="650.6666666666667" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(20)</tspan></text>
+  <text x="238.2" y="650.6666666666667" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">role</tspan></text>
+  <text x="48" y="672.6666666666667" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">boolean</tspan></text>
+  <text x="238.2" y="672.6666666666667" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">is_active</tspan></text>
+  <text x="48" y="694.6666666666667" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">timestamp</tspan></text>
+  <text x="238.2" y="694.6666666666667" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">created_at</tspan></text>
+  <text x="48" y="716.6666666666667" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">timestamp</tspan></text>
+  <text x="238.2" y="716.6666666666667" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">updated_at</tspan></text>
+</g>
+<g class="entity" data-id="blog_posts" data-label="blog_posts">
+  <rect x="473.866" y="424" width="239.2" height="298" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <rect x="473.866" y="424" width="239.2" height="34" rx="0" ry="0" fill="var(--_group-hdr)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="593.466" y="441" text-anchor="middle" font-size="13" font-weight="700" fill="var(--_text)" dy="4.55">blog_posts</text>
+  <line x1="473.866" y1="458" x2="713.066" y2="458" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <rect x="479.866" y="462" width="22.31" height="14" rx="2" ry="2" fill="var(--_key-badge)" />
+  <text x="491.02099999999996" y="469" text-anchor="middle" dy="0.35em" font-size="9" font-weight="600" fill="var(--_text-sec)">PK</text>
+  <text x="510.176" y="469" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">int</tspan></text>
+  <text x="705.066" y="469" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">id</tspan></text>
+  <text x="481.866" y="491" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(200)</tspan></text>
+  <text x="705.066" y="491" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">title</tspan></text>
+  <text x="481.866" y="513" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(200)</tspan></text>
+  <text x="705.066" y="513" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">slug</tspan></text>
+  <text x="481.866" y="535" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">text</tspan></text>
+  <text x="705.066" y="535" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">excerpt</tspan></text>
+  <text x="481.866" y="557" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">text</tspan></text>
+  <text x="705.066" y="557" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">content</tspan></text>
+  <rect x="479.866" y="572" width="22.31" height="14" rx="2" ry="2" fill="var(--_key-badge)" />
+  <text x="491.02099999999996" y="579" text-anchor="middle" dy="0.35em" font-size="9" font-weight="600" fill="var(--_text-sec)">FK</text>
+  <text x="510.176" y="579" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">int</tspan></text>
+  <text x="705.066" y="579" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">author_id</tspan></text>
+  <text x="481.866" y="601" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(20)</tspan></text>
+  <text x="705.066" y="601" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">status</tspan></text>
+  <text x="481.866" y="623" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">timestamp</tspan></text>
+  <text x="705.066" y="623" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">published_at</tspan></text>
+  <text x="481.866" y="645" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(255)</tspan></text>
+  <text x="705.066" y="645" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">featured_image_url</tspan></text>
+  <text x="481.866" y="667" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(255)</tspan></text>
+  <text x="705.066" y="667" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">meta_description</tspan></text>
+  <text x="481.866" y="689" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">timestamp</tspan></text>
+  <text x="705.066" y="689" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">created_at</tspan></text>
+  <text x="481.866" y="711" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">timestamp</tspan></text>
+  <text x="705.066" y="711" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">updated_at</tspan></text>
+</g>
+<g class="entity" data-id="clients" data-label="clients">
+  <rect x="646" y="40" width="212.79999999999998" height="298" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <rect x="646" y="40" width="212.79999999999998" height="34" rx="0" ry="0" fill="var(--_group-hdr)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="752.4" y="57" text-anchor="middle" font-size="13" font-weight="700" fill="var(--_text)" dy="4.55">clients</text>
+  <line x1="646" y1="74" x2="858.8" y2="74" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <rect x="652" y="78" width="22.31" height="14" rx="2" ry="2" fill="var(--_key-badge)" />
+  <text x="663.155" y="85" text-anchor="middle" dy="0.35em" font-size="9" font-weight="600" fill="var(--_text-sec)">PK</text>
+  <text x="682.31" y="85" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">int</tspan></text>
+  <text x="850.8" y="85" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">id</tspan></text>
+  <text x="654" y="107" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(100)</tspan></text>
+  <text x="850.8" y="107" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">company_name</tspan></text>
+  <text x="654" y="129" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(100)</tspan></text>
+  <text x="850.8" y="129" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">contact_person</tspan></text>
+  <text x="654" y="151" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(100)</tspan></text>
+  <text x="850.8" y="151" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">email</tspan></text>
+  <text x="654" y="173" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(20)</tspan></text>
+  <text x="850.8" y="173" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">phone</tspan></text>
+  <text x="654" y="195" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">text</tspan></text>
+  <text x="850.8" y="195" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">address</tspan></text>
+  <text x="654" y="217" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(100)</tspan></text>
+  <text x="850.8" y="217" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">website</tspan></text>
+  <text x="654" y="239" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(255)</tspan></text>
+  <text x="850.8" y="239" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">logo_url</tspan></text>
+  <text x="654" y="261" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(50)</tspan></text>
+  <text x="850.8" y="261" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">industry</tspan></text>
+  <text x="654" y="283" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">boolean</tspan></text>
+  <text x="850.8" y="283" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">is_active</tspan></text>
+  <text x="654" y="305" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">timestamp</tspan></text>
+  <text x="850.8" y="305" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">created_at</tspan></text>
+  <text x="654" y="327" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">timestamp</tspan></text>
+  <text x="850.8" y="327" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">updated_at</tspan></text>
+</g>
+<g class="entity" data-id="testimonials" data-label="testimonials">
+  <rect x="1074.586" y="62" width="219.4" height="254" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <rect x="1074.586" y="62" width="219.4" height="34" rx="0" ry="0" fill="var(--_group-hdr)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="1184.286" y="79" text-anchor="middle" font-size="13" font-weight="700" fill="var(--_text)" dy="4.55">testimonials</text>
+  <line x1="1074.586" y1="96" x2="1293.986" y2="96" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <rect x="1080.586" y="100" width="22.31" height="14" rx="2" ry="2" fill="var(--_key-badge)" />
+  <text x="1091.741" y="107" text-anchor="middle" dy="0.35em" font-size="9" font-weight="600" fill="var(--_text-sec)">PK</text>
+  <text x="1110.896" y="107" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">int</tspan></text>
+  <text x="1285.986" y="107" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">id</tspan></text>
+  <rect x="1080.586" y="122" width="22.31" height="14" rx="2" ry="2" fill="var(--_key-badge)" />
+  <text x="1091.741" y="129" text-anchor="middle" dy="0.35em" font-size="9" font-weight="600" fill="var(--_text-sec)">FK</text>
+  <text x="1110.896" y="129" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">int</tspan></text>
+  <text x="1285.986" y="129" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">client_id</tspan></text>
+  <text x="1082.586" y="151" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(100)</tspan></text>
+  <text x="1285.986" y="151" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">author_name</tspan></text>
+  <text x="1082.586" y="173" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(100)</tspan></text>
+  <text x="1285.986" y="173" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">author_position</tspan></text>
+  <text x="1082.586" y="195" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">text</tspan></text>
+  <text x="1285.986" y="195" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">content</tspan></text>
+  <text x="1082.586" y="217" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">int</tspan></text>
+  <text x="1285.986" y="217" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">rating</tspan></text>
+  <text x="1082.586" y="239" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">boolean</tspan></text>
+  <text x="1285.986" y="239" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">is_approved</tspan></text>
+  <text x="1082.586" y="261" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">timestamp</tspan></text>
+  <text x="1285.986" y="261" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">published_at</tspan></text>
+  <text x="1082.586" y="283" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">timestamp</tspan></text>
+  <text x="1285.986" y="283" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">created_at</tspan></text>
+  <text x="1082.586" y="305" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">timestamp</tspan></text>
+  <text x="1285.986" y="305" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">updated_at</tspan></text>
+</g>
+<g class="entity" data-id="contact_messages" data-label="contact_messages">
+  <rect x="473.866" y="792" width="166.6" height="254" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <rect x="473.866" y="792" width="166.6" height="34" rx="0" ry="0" fill="var(--_group-hdr)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="557.1659999999999" y="809" text-anchor="middle" font-size="13" font-weight="700" fill="var(--_text)" dy="4.55">contact_messages</text>
+  <line x1="473.866" y1="826" x2="640.466" y2="826" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <rect x="479.866" y="830" width="22.31" height="14" rx="2" ry="2" fill="var(--_key-badge)" />
+  <text x="491.02099999999996" y="837" text-anchor="middle" dy="0.35em" font-size="9" font-weight="600" fill="var(--_text-sec)">PK</text>
+  <text x="510.176" y="837" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">int</tspan></text>
+  <text x="632.466" y="837" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">id</tspan></text>
+  <text x="481.866" y="859" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(100)</tspan></text>
+  <text x="632.466" y="859" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">name</tspan></text>
+  <text x="481.866" y="881" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(100)</tspan></text>
+  <text x="632.466" y="881" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">email</tspan></text>
+  <text x="481.866" y="903" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(20)</tspan></text>
+  <text x="632.466" y="903" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">phone</tspan></text>
+  <text x="481.866" y="925" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(150)</tspan></text>
+  <text x="632.466" y="925" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">subject</tspan></text>
+  <text x="481.866" y="947" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">text</tspan></text>
+  <text x="632.466" y="947" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">message</tspan></text>
+  <text x="481.866" y="969" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(20)</tspan></text>
+  <text x="632.466" y="969" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">status</tspan></text>
+  <rect x="479.866" y="984" width="22.31" height="14" rx="2" ry="2" fill="var(--_key-badge)" />
+  <text x="491.02099999999996" y="991" text-anchor="middle" dy="0.35em" font-size="9" font-weight="600" fill="var(--_text-sec)">FK</text>
+  <text x="510.176" y="991" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">int</tspan></text>
+  <text x="632.466" y="991" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">assigned_to</tspan></text>
+  <text x="481.866" y="1013" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">timestamp</tspan></text>
+  <text x="632.466" y="1013" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">created_at</tspan></text>
+  <text x="481.866" y="1035" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">timestamp</tspan></text>
+  <text x="632.466" y="1035" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">updated_at</tspan></text>
+</g>
+<g class="entity" data-id="service_packages" data-label="service_packages">
+  <rect x="226.6" y="40" width="173.2" height="232" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <rect x="226.6" y="40" width="173.2" height="34" rx="0" ry="0" fill="var(--_group-hdr)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="313.2" y="57" text-anchor="middle" font-size="13" font-weight="700" fill="var(--_text)" dy="4.55">service_packages</text>
+  <line x1="226.6" y1="74" x2="399.79999999999995" y2="74" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <rect x="232.6" y="78" width="22.31" height="14" rx="2" ry="2" fill="var(--_key-badge)" />
+  <text x="243.755" y="85" text-anchor="middle" dy="0.35em" font-size="9" font-weight="600" fill="var(--_text-sec)">PK</text>
+  <text x="262.90999999999997" y="85" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">int</tspan></text>
+  <text x="391.79999999999995" y="85" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">id</tspan></text>
+  <text x="234.6" y="107" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(100)</tspan></text>
+  <text x="391.79999999999995" y="107" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">name</tspan></text>
+  <text x="234.6" y="129" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">text</tspan></text>
+  <text x="391.79999999999995" y="129" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">description</tspan></text>
+  <text x="234.6" y="151" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(50)</tspan></text>
+  <text x="391.79999999999995" y="151" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">type</tspan></text>
+  <text x="234.6" y="173" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">decimal(10,2)</tspan></text>
+  <text x="391.79999999999995" y="173" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">price</tspan></text>
+  <text x="234.6" y="195" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(50)</tspan></text>
+  <text x="391.79999999999995" y="195" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">bandwidth</tspan></text>
+  <text x="234.6" y="217" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">boolean</tspan></text>
+  <text x="391.79999999999995" y="217" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">is_active</tspan></text>
+  <text x="234.6" y="239" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">timestamp</tspan></text>
+  <text x="391.79999999999995" y="239" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">created_at</tspan></text>
+  <text x="234.6" y="261" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">timestamp</tspan></text>
+  <text x="391.79999999999995" y="261" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">updated_at</tspan></text>
+</g>
+<g class="entity" data-id="coverage_areas" data-label="coverage_areas">
+  <rect x="40" y="40" width="166.6" height="166" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <rect x="40" y="40" width="166.6" height="34" rx="0" ry="0" fill="var(--_group-hdr)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="123.3" y="57" text-anchor="middle" font-size="13" font-weight="700" fill="var(--_text)" dy="4.55">coverage_areas</text>
+  <line x1="40" y1="74" x2="206.6" y2="74" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <rect x="46" y="78" width="22.31" height="14" rx="2" ry="2" fill="var(--_key-badge)" />
+  <text x="57.155" y="85" text-anchor="middle" dy="0.35em" font-size="9" font-weight="600" fill="var(--_text-sec)">PK</text>
+  <text x="76.31" y="85" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">int</tspan></text>
+  <text x="198.6" y="85" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">id</tspan></text>
+  <text x="48" y="107" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(100)</tspan></text>
+  <text x="198.6" y="107" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">name</tspan></text>
+  <text x="48" y="129" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">text</tspan></text>
+  <text x="198.6" y="129" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">description</tspan></text>
+  <text x="48" y="151" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">boolean</tspan></text>
+  <text x="198.6" y="151" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">is_active</tspan></text>
+  <text x="48" y="173" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">timestamp</tspan></text>
+  <text x="198.6" y="173" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">created_at</tspan></text>
+  <text x="48" y="195" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">timestamp</tspan></text>
+  <text x="198.6" y="195" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">updated_at</tspan></text>
+</g>
+<g class="entity" data-id="website_settings" data-label="website_settings">
+  <rect x="419.79999999999995" y="40" width="206.2" height="364" rx="0" ry="0" fill="var(--_node-fill)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <rect x="419.79999999999995" y="40" width="206.2" height="34" rx="0" ry="0" fill="var(--_group-hdr)" stroke="var(--_node-stroke)" stroke-width="1" />
+  <text x="522.9" y="57" text-anchor="middle" font-size="13" font-weight="700" fill="var(--_text)" dy="4.55">website_settings</text>
+  <line x1="419.79999999999995" y1="74" x2="626" y2="74" stroke="var(--_node-stroke)" stroke-width="0.75" />
+  <rect x="425.79999999999995" y="78" width="22.31" height="14" rx="2" ry="2" fill="var(--_key-badge)" />
+  <text x="436.9549999999999" y="85" text-anchor="middle" dy="0.35em" font-size="9" font-weight="600" fill="var(--_text-sec)">PK</text>
+  <text x="456.10999999999996" y="85" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">int</tspan></text>
+  <text x="618" y="85" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">id</tspan></text>
+  <text x="427.79999999999995" y="107" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(100)</tspan></text>
+  <text x="618" y="107" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">company_name</tspan></text>
+  <text x="427.79999999999995" y="129" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(150)</tspan></text>
+  <text x="618" y="129" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">tagline</tspan></text>
+  <text x="427.79999999999995" y="151" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">text</tspan></text>
+  <text x="618" y="151" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">description</tspan></text>
+  <text x="427.79999999999995" y="173" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">text</tspan></text>
+  <text x="618" y="173" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">address</tspan></text>
+  <text x="427.79999999999995" y="195" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(20)</tspan></text>
+  <text x="618" y="195" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">phone</tspan></text>
+  <text x="427.79999999999995" y="217" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(100)</tspan></text>
+  <text x="618" y="217" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">email</tspan></text>
+  <text x="427.79999999999995" y="239" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(255)</tspan></text>
+  <text x="618" y="239" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">logo_url</tspan></text>
+  <text x="427.79999999999995" y="261" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(255)</tspan></text>
+  <text x="618" y="261" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">favicon_url</tspan></text>
+  <text x="427.79999999999995" y="283" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(255)</tspan></text>
+  <text x="618" y="283" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">facebook_url</tspan></text>
+  <text x="427.79999999999995" y="305" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(255)</tspan></text>
+  <text x="618" y="305" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">twitter_url</tspan></text>
+  <text x="427.79999999999995" y="327" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(255)</tspan></text>
+  <text x="618" y="327" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">instagram_url</tspan></text>
+  <text x="427.79999999999995" y="349" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">varchar(255)</tspan></text>
+  <text x="618" y="349" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">linkedin_url</tspan></text>
+  <text x="427.79999999999995" y="371" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">timestamp</tspan></text>
+  <text x="618" y="371" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">created_at</tspan></text>
+  <text x="427.79999999999995" y="393" class="mono" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-muted)">timestamp</tspan></text>
+  <text x="618" y="393" class="mono" text-anchor="end" dy="0.35em" font-size="11" font-weight="400"><tspan fill="var(--_text-sec)">updated_at</tspan></text>
+</g>
+<line x1="250.2" y1="567" x2="250.2" y2="579" stroke="var(--_line)" stroke-width="1.25" />
+<line x1="254.2" y1="567" x2="254.2" y2="579" stroke="var(--_line)" stroke-width="1.25" />
+<line x1="469.866" y1="580" x2="457.866" y2="573" stroke="var(--_line)" stroke-width="1.25" />
+<line x1="469.866" y1="573" x2="457.866" y2="573" stroke="var(--_line)" stroke-width="1.25" />
+<line x1="469.866" y1="566" x2="457.866" y2="573" stroke="var(--_line)" stroke-width="1.25" />
+<circle cx="453.866" cy="573" r="4" fill="var(--bg)" stroke="var(--_line)" stroke-width="1.25" />
+<line x1="862.8" y1="183" x2="862.8" y2="195" stroke="var(--_line)" stroke-width="1.25" />
+<line x1="866.8" y1="183" x2="866.8" y2="195" stroke="var(--_line)" stroke-width="1.25" />
+<line x1="1070.586" y1="196" x2="1058.586" y2="189" stroke="var(--_line)" stroke-width="1.25" />
+<line x1="1070.586" y1="189" x2="1058.586" y2="189" stroke="var(--_line)" stroke-width="1.25" />
+<line x1="1070.586" y1="182" x2="1058.586" y2="189" stroke="var(--_line)" stroke-width="1.25" />
+<circle cx="1054.586" cy="189" r="4" fill="var(--bg)" stroke="var(--_line)" stroke-width="1.25" />
+<line x1="250.19999999999993" y1="644.3333333333334" x2="250.20000000000005" y2="656.3333333333334" stroke="var(--_line)" stroke-width="1.25" />
+<line x1="254.19999999999993" y1="644.3333333333334" x2="254.20000000000005" y2="656.3333333333334" stroke="var(--_line)" stroke-width="1.25" />
+<line x1="469.866" y1="926" x2="457.866" y2="919" stroke="var(--_line)" stroke-width="1.25" />
+<line x1="469.866" y1="919" x2="457.866" y2="919" stroke="var(--_line)" stroke-width="1.25" />
+<line x1="469.866" y1="912" x2="457.866" y2="919" stroke="var(--_line)" stroke-width="1.25" />
+<circle cx="453.866" cy="919" r="4" fill="var(--bg)" stroke="var(--_line)" stroke-width="1.25" />
+<rect x="340.952" y="562.85" width="38.162" height="20.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="0.5" />
+<text x="360.033" y="573" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-muted)" dy="3.8499999999999996">writes</text>
+<rect x="948.8" y="178.85" width="35.786" height="20.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="0.5" />
+<text x="966.693" y="189" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-muted)" dy="3.8499999999999996">gives</text>
+<rect x="232.367" y="878.3496666666666" width="47.666000000000004" height="20.3" rx="2" ry="2" fill="var(--bg)" stroke="var(--_inner-stroke)" stroke-width="0.5" />
+<text x="256.2" y="888.4996666666666" text-anchor="middle" font-size="11" font-weight="400" fill="var(--_text-muted)" dy="3.8499999999999996">handles</text>
+</svg>
