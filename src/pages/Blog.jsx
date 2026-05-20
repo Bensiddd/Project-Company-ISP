@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { HiArrowRight } from 'react-icons/hi';
 import { blogPostsAPI } from '../services/api';
@@ -47,41 +48,48 @@ const Blog = () => {
               transition={{ staggerChildren: 0.1 }}
             >
               {posts.map(post => (
-                <motion.article
-                  key={post.id}
-                  className="blog-post-card"
-                  initial={{ opacity: 0, y: 30 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.4 }}
-                  whileHover={{ y: -6 }}
-                >
-                  <div className="blog-post-image">
-                    <div className="blog-post-placeholder">
-                      <span>{post.category[0]}</span>
-                    </div>
-                  </div>
-                  <div className="blog-post-body">
-                    <div className="blog-post-meta">
-                      <span className="blog-post-category">{post.category}</span>
-                      <span className="blog-post-date">
-                        {new Date(post.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </span>
-                    </div>
-                    <h3>{post.title}</h3>
-                    <p>{post.excerpt}</p>
-                    <div className="blog-post-footer">
-                      <div className="blog-post-author">
-                        <div className="post-author-avatar">
-                          {post.author_name?.split(' ').map(n => n[0]).join('')}
+                <Link to={`/blog/${post.slug}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+                  <motion.article
+                    key={post.id}
+                    className="blog-post-card"
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.4 }}
+                    whileHover={{ y: -6 }}
+                  >
+                    <div className="blog-post-image">
+                      {post.featured_image_url ? (
+                        <img src={post.featured_image_url} alt={post.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <div className="blog-post-placeholder">
+                          <span>{post.category[0]}</span>
                         </div>
-                        <span>{post.author_name}</span>
-                      </div>
-                      <button className="btn btn-ghost">
-                        Read <HiArrowRight />
-                      </button>
+                      )}
                     </div>
-                  </div>
-                </motion.article>
+                    <div className="blog-post-body">
+                      <div className="blog-post-meta">
+                        <span className="blog-post-category">{post.category}</span>
+                        <span className="blog-post-date">
+                          {new Date(post.published_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </span>
+                      </div>
+                      <h3>{post.title}</h3>
+                      <p>{post.excerpt}</p>
+                      {Array.isArray(post.tags) && post.tags.length > 0 && (
+                        <div className="blog-post-tags">
+                          {post.tags.map(tag => (
+                            <span key={tag} className="badge badge-primary" style={{ fontSize: 11, background: 'var(--bg-elevated)', color: 'var(--text-secondary)' }}>{tag}</span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="blog-post-footer">
+                        <span className="btn btn-ghost">
+                          Read <HiArrowRight />
+                        </span>
+                      </div>
+                    </div>
+                  </motion.article>
+                </Link>
               ))}
             </motion.div>
           )}

@@ -5,6 +5,7 @@ import { HiChartBar, HiUsers, HiPencilAlt, HiChip, HiGlobe, HiBriefcase, HiCog, 
 import AdminOverview from './AdminOverview';
 import AdminUsers from './AdminUsers';
 import BlogPosts from './BlogPosts';
+import BlogEditor from './BlogEditor';
 import ServicePackages from './ServicePackages';
 import CoverageAreas from './CoverageAreas';
 import ClientsTestimonials from './ClientsTestimonials';
@@ -179,6 +180,8 @@ const AdminDashboard = () => {
             <Route path="" element={<AdminOverview />} />
             <Route path="users" element={<AdminUsers />} />
             <Route path="blog" element={<BlogPosts />} />
+            <Route path="blog/editor" element={<BlogEditor />} />
+            <Route path="blog/editor/:id" element={<BlogEditor />} />
             <Route path="services" element={<ServicePackages />} />
             <Route path="coverage" element={<CoverageAreas />} />
             <Route path="clients" element={<ClientsTestimonials />} />

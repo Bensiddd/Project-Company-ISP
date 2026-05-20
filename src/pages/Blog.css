@@ -80,6 +80,13 @@
   overflow: hidden;
 }
 
+.blog-post-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
 .blog-post-footer {
   display: flex;
   justify-content: space-between;

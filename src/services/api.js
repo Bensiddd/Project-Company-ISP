@@ -63,6 +63,7 @@ export const adminUsersAPI = {
 export const blogPostsAPI = {
   getAll: () => api.get('/blog-posts'),
   getById: (id) => api.get(`/blog-posts/${id}`),
+  getBySlug: (slug) => api.get(`/blog-posts/slug/${slug}`),
   create: (postData) => api.post('/blog-posts', postData),
   update: (id, postData) => api.put(`/blog-posts/${id}`, postData),
   delete: (id) => api.delete(`/blog-posts/${id}`)

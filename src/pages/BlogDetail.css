@@ -1,0 +1,240 @@
+.blog-detail-excerpt {
+  font-size: 1.1rem;
+  color: var(--text-secondary);
+  max-width: 600px;
+  margin: 12px auto 0;
+  line-height: 1.6;
+}
+
+.page-header-cover .blog-detail-excerpt {
+  color: rgba(255,255,255,0.85);
+  text-shadow: 0 1px 8px rgba(0,0,0,0.3);
+}
+
+.blog-detail-tags {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.blog-detail-meta {
+  display: flex;
+  justify-content: center;
+  gap: 24px;
+  margin-top: 16px;
+  font-size: 14px;
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+}
+
+.blog-detail-meta span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.blog-detail-meta svg {
+  width: 16px;
+  height: 16px;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--primary-light);
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.page-header-cover {
+  position: relative;
+  overflow: hidden;
+  padding: 160px 0 120px;
+}
+
+.page-header-bg-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  display: block;
+  filter: blur(4px);
+  transform: scale(1.05);
+}
+
+.page-header-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, rgba(0,0,0,0.6) 40%, rgba(0,0,0,0.35) 100%);
+  z-index: 1;
+}
+
+.page-header-cover h1 {
+  color: #fff;
+  text-shadow: 0 2px 16px rgba(0,0,0,0.5);
+}
+
+.page-header-cover .blog-detail-meta,
+.page-header-cover .blog-detail-meta span {
+  color: rgba(255,255,255,0.92);
+}
+
+.page-header-cover .back-link {
+  color: rgba(255,255,255,0.9);
+  text-shadow: 0 1px 8px rgba(0,0,0,0.4);
+}
+
+.page-header-cover .back-link:hover {
+  color: #fff;
+}
+
+.blog-detail-content {
+  max-width: 800px;
+  margin: 0 auto;
+  line-height: 1.8;
+  font-size: 16px;
+  color: var(--text-secondary);
+}
+
+.blog-detail-content h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  margin: 1.5rem 0 0.75rem;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.blog-detail-content h2 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 1.25rem 0 0.5rem;
+  color: var(--text-primary);
+  line-height: 1.35;
+}
+
+.blog-detail-content h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin: 1rem 0 0.5rem;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.blog-detail-content h4 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0.75rem 0 0.5rem;
+  color: var(--text-primary);
+  line-height: 1.4;
+}
+
+.blog-detail-content p {
+  margin-bottom: 1.25rem;
+}
+
+.blog-detail-content ul,
+.blog-detail-content ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.blog-detail-content ul li {
+  list-style-type: disc;
+  margin-bottom: 0.25rem;
+}
+
+.blog-detail-content ol li {
+  list-style-type: decimal;
+  margin-bottom: 0.25rem;
+}
+
+.blog-detail-content a {
+  color: var(--primary-light);
+  text-decoration: underline;
+}
+
+.blog-detail-content a:hover {
+  opacity: 0.85;
+}
+
+.blog-detail-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+  margin: 1.5rem 0;
+  display: block;
+}
+
+.blog-detail-content blockquote {
+  border-left: 3px solid var(--primary);
+  padding: 0.75rem 1.25rem;
+  margin: 1.25rem 0;
+  color: var(--text-secondary);
+  font-style: italic;
+  background: var(--bg-secondary);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.blog-detail-content code {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 0.85em;
+  font-family: var(--font-mono);
+  color: var(--primary-light);
+}
+
+.blog-detail-content pre {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin: 1rem 0;
+  overflow-x: auto;
+}
+
+.blog-detail-content pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--text-secondary);
+}
+
+.blog-detail-content hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 1.5rem 0;
+}
+
+.blog-detail-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: 14px;
+}
+
+.blog-detail-content th,
+.blog-detail-content td {
+  border: 1px solid var(--border);
+  padding: 10px 14px;
+  text-align: left;
+}
+
+.blog-detail-content th {
+  background: var(--bg-secondary);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.blog-detail-content td {
+  color: var(--text-secondary);
+}

@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
+import { dirname, resolve, join } from 'path';
 import dotenv from 'dotenv';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -23,12 +23,14 @@ import botSettingsRoutes from './routes/bot-settings.js';
 import settingsRoutes from './routes/settings.js';
 import dashboardRoutes from './routes/dashboard.js';
 import mikrotikRoutes from './routes/mikrotik.js';
+import uploadRoutes from './routes/upload.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static(join(__dirname, '../uploads')));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin-users', userRoutes);
@@ -45,6 +47,7 @@ app.use('/api/telegram-bots', botSettingsRoutes);
 app.use('/api/website-settings', settingsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/mikrotik', mikrotikRoutes);
+app.use('/api/upload', uploadRoutes);
 
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

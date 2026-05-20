@@ -8,7 +8,7 @@ const sqls = [
   `CREATE TABLE IF NOT EXISTS admin_users (id INT AUTO_INCREMENT PRIMARY KEY, username VARCHAR(50) UNIQUE NOT NULL, password_hash VARCHAR(255) NOT NULL, email VARCHAR(100) UNIQUE NOT NULL, full_name VARCHAR(100), role VARCHAR(20) DEFAULT 'admin', is_active TINYINT(1) DEFAULT 1, last_login TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB`,
   `CREATE TABLE IF NOT EXISTS clients (id INT AUTO_INCREMENT PRIMARY KEY, company_name VARCHAR(100) NOT NULL, contact_person VARCHAR(100), email VARCHAR(100), phone VARCHAR(20), address TEXT, website VARCHAR(255), logo_url VARCHAR(255), industry VARCHAR(50), is_active TINYINT(1) DEFAULT 1, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB`,
   `CREATE TABLE IF NOT EXISTS testimonials (id INT AUTO_INCREMENT PRIMARY KEY, client_id INT, author_name VARCHAR(100) NOT NULL, author_position VARCHAR(100), content TEXT NOT NULL, rating INT CHECK(rating >= 1 AND rating <= 5), is_approved TINYINT(1) DEFAULT 0, published_at TIMESTAMP, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (client_id) REFERENCES clients(id) ON DELETE SET NULL) ENGINE=InnoDB`,
-  `CREATE TABLE IF NOT EXISTS blog_posts (id INT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(200) NOT NULL, slug VARCHAR(200) UNIQUE NOT NULL, excerpt TEXT, content TEXT, category VARCHAR(100), author_id INT, status VARCHAR(20) DEFAULT 'draft', published_at TIMESTAMP, featured_image_url VARCHAR(255), meta_description VARCHAR(255), read_time VARCHAR(20), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (author_id) REFERENCES admin_users(id) ON DELETE SET NULL) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS blog_posts (id INT AUTO_INCREMENT PRIMARY KEY, title VARCHAR(200) NOT NULL, slug VARCHAR(200) UNIQUE NOT NULL, excerpt TEXT, content TEXT, category VARCHAR(100), author_id INT, status VARCHAR(20) DEFAULT 'draft', published_at TIMESTAMP, featured_image_url VARCHAR(255), meta_description VARCHAR(255), read_time VARCHAR(20), tags TEXT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (author_id) REFERENCES admin_users(id) ON DELETE SET NULL) ENGINE=InnoDB`,
   `CREATE TABLE IF NOT EXISTS contact_messages (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL, email VARCHAR(100) NOT NULL, phone VARCHAR(20), whatsapp VARCHAR(20), telegram_chat_id VARCHAR(100), subject VARCHAR(150), message TEXT NOT NULL, status VARCHAR(20) DEFAULT 'unread', assigned_to INT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (assigned_to) REFERENCES admin_users(id) ON DELETE SET NULL) ENGINE=InnoDB`,
   `CREATE TABLE IF NOT EXISTS telegram_bots (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL, bot_token VARCHAR(255) NOT NULL, admin_chat_id VARCHAR(100), is_active TINYINT(1) DEFAULT 1, role VARCHAR(20) DEFAULT 'admin', ai_enabled TINYINT(1) DEFAULT 0, ai_provider VARCHAR(50), ai_model VARCHAR(100), ai_api_key VARCHAR(255), ai_url VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB`,
   `CREATE TABLE IF NOT EXISTS tickets (id INT AUTO_INCREMENT PRIMARY KEY, contact_message_id INT, telegram_conversation_id INT, type VARCHAR(50) NOT NULL DEFAULT 'maintenance', status VARCHAR(20) DEFAULT 'open' CHECK(status IN ('open', 'in_progress', 'resolved', 'closed')), priority VARCHAR(20) DEFAULT 'checking' CHECK(priority IN ('low', 'medium', 'high', 'checking')), title VARCHAR(200) NOT NULL, description TEXT, assigned_to INT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY (contact_message_id) REFERENCES contact_messages(id) ON DELETE SET NULL, FOREIGN KEY (assigned_to) REFERENCES admin_users(id) ON DELETE SET NULL) ENGINE=InnoDB`,
@@ -52,6 +52,20 @@ try {
   await db.run('ALTER TABLE tickets ADD COLUMN telegram_conversation_id INT NULL AFTER contact_message_id');
 } catch (e) {
   if (!e.message.includes('Duplicate column')) console.error('Migration note:', e.message);
+}
+
+// Add tags column to blog_posts if not exists
+try {
+  await db.run('ALTER TABLE blog_posts ADD COLUMN tags TEXT AFTER read_time');
+} catch (e) {
+  if (!e.message.includes('Duplicate column')) console.error('Migration note:', e.message);
+}
+
+// Clean up invalid tags (double-stringified or non-JSON values)
+try {
+  await db.run("UPDATE blog_posts SET tags = NULL WHERE tags IS NOT NULL AND tags != '' AND LEFT(tags, 1) != '['");
+} catch (e) {
+  console.error('Migration note:', e.message);
 }
 
 console.log('All tables created successfully.');

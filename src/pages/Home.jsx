@@ -249,37 +249,36 @@ const Home = () => {
             viewport={{ once: true, margin: '-50px' }}
           >
             {blogPosts.map(post => (
-              <motion.article
-                key={post.id}
-                className="blog-card"
-                variants={itemVariants}
-                whileHover={{ y: -6 }}
-              >
-                <div className="blog-card-image">
-                  <div className="blog-img-placeholder">
-                    <span>{post.category[0]}</span>
-                  </div>
-                </div>
-                <div className="blog-card-content">
-                  <div className="blog-meta">
-                    <span className="blog-category-badge">{post.category}</span>
-                    <span className="blog-read-time">{post.read_time}</span>
-                  </div>
-                  <h3>{post.title}</h3>
-                  <p>{post.excerpt}</p>
-                  <div className="blog-card-footer">
-                    <div className="blog-author-mini">
-                      <div className="author-mini-avatar">
-                        {post.author_name?.split(' ').map(n => n[0]).join('')}
+              <Link key={post.id} to={`/blog/${post.slug}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+                <motion.article
+                  className="blog-card"
+                  variants={itemVariants}
+                  whileHover={{ y: -6 }}
+                >
+                  <div className="blog-card-image">
+                    {post.featured_image_url ? (
+                      <img src={post.featured_image_url} alt={post.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    ) : (
+                      <div className="blog-img-placeholder">
+                        <span>{post.category[0]}</span>
                       </div>
-                      <span>{post.author_name}</span>
-                    </div>
-                    <Link to="/blog" className="btn btn-ghost">
-                      Baca <HiArrowRight />
-                    </Link>
+                    )}
                   </div>
-                </div>
-              </motion.article>
+                  <div className="blog-card-content">
+                    <div className="blog-meta">
+                      <span className="blog-category-badge">{post.category}</span>
+                      <span className="blog-read-time">{post.read_time}</span>
+                    </div>
+                    <h3>{post.title}</h3>
+                    <p>{post.excerpt}</p>
+                    <div className="blog-card-footer">
+                      <span className="btn btn-ghost" style={{ cursor: 'pointer' }}>
+                        Baca <HiArrowRight />
+                      </span>
+                    </div>
+                  </div>
+                </motion.article>
+              </Link>
             ))}
           </motion.div>
         </div>
