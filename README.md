@@ -16,7 +16,7 @@ Sistem manajemen **ISP** full-stack dengan landing page publik, dashboard admin 
 
 ```
 src/
-├── components/          # Komponen UI reusable (Header, Footer, FormModal, PricingSection, DataTable, dll)
+├── components/          # Komponen UI reusable (Header, Footer, FormModal, PricingSection, DataTable, RichTextEditor, dll)
 ├── pages/
 │   ├── Home.jsx         # Single-scroll: hero, about, coverage, services, blog, contact
 │   ├── About.jsx
@@ -35,7 +35,8 @@ src/
 │       ├── MikrotikMonitor.jsx     # Network monitor: traffic chart (Recharts), logs, PPPoE
 │       ├── ServicePackages.jsx     # 3 paket ISP: Starter Rp160rb, Professional Rp400rb, Enterprise
 │       ├── CoverageAreas.jsx       # Wilayah cakupan
-│       ├── BlogPosts.jsx
+│       ├── BlogPosts.jsx             # Tabel blog posts (navigasi ke halaman editor)
+│       ├── BlogEditor.jsx            # Blog post editor dengan TipTap WYSIWYG
 │       ├── ClientsTestimonials.jsx
 │       └── WebsiteSettings.jsx
 ├── services/api.js      # Axios instance + 15 module API (termasuk mikrotikAPI)
@@ -57,7 +58,8 @@ server/
 ├── routes/
 │   ├── auth.js           # Login / register / logout / me + activity log
 │   ├── users.js          # CRUD admin users (6 role)
-│   ├── blog.js           # CRUD blog posts
+│   ├── blog.js           # CRUD blog posts (slug, tags, excerpt, featured image, author tracking)
+│   ├── upload.js         # Image upload (multer, max 5MB, hanya gambar, /uploads/)
 │   ├── services.js       # CRUD service packages
 │   ├── coverage.js       # CRUD coverage areas
 │   ├── clients.js        # CRUD clients
@@ -83,7 +85,8 @@ server/
 - About + 4 value cards (Cepat, Terpercaya, Terjangkau, Komunitas)
 - Coverage (Wanasari, Wanajaya, Selang, Kab. Bekasi)
 - Services bisa custom packet layanan
-- Blog preview dari API
+- Blog preview dari API (featured image thumbnail, tags, excerpt, read time)
+- Blog detail page dengan hero cover image (blur + overlay gradient)
 - Contact form dengan WhatsApp field
 - StatsCounter (500+ pelanggan, 98% uptime, 10+ wilayah, 24/7 support)
 - Dark theme dengan glassmorphism, Framer Motion animations
@@ -159,6 +162,16 @@ server/
 - Timeout 20 detik per request (AbortController)
 - System prompt Bahasa Indonesia untuk CS MAZNET
 
+### ✍️ Blog Editor (WYSIWYG)
+- TipTap rich text editor dengan toolbar: Bold, Italic, Underline, Strikethrough, Code, H1-H3, Lists, Align, Image, Link, Table, Undo/Redo
+- **Featured image** — upload via multer ke `/uploads/`, preview di editor, thumbnail di card blog, hero cover di detail
+- **Tags management** — add/remove tags per post, ditampilkan di card blog list dan detail
+- **Excerpt** — cuplikan singkat yang tampil di card preview
+- **Meta Description** — untuk SEO (tidak visible di frontend)
+- **Author tracking** — setiap edit menyimpan `author_id` sebagai user yang terakhir mengubah
+- Preview mode untuk lihat hasil render HTML
+- Proxy Vite: `/uploads` diarahkan ke `http://localhost:3001`
+
 ## Database
 
 **MySQL 8** via Docker (`mysql:8` image). Semua port bind ke `127.0.0.1` (loopback — tidak bisa diakses dari luar).
@@ -173,7 +186,7 @@ server/
 | Tabel | Fungsi |
 |---|---|
 | `admin_users` | Pengguna admin (6 role: super_admin, admin, cs, marketing, editor, teknisi) |
-| `blog_posts` | Artikel blog (slug unik, draft/published, category) |
+| `blog_posts` | Artikel blog (slug unik, draft/published, category, tags JSON, featured_image_url, meta_description, read_time, excerpt) |
 | `service_packages` | Paket ISP (JSON features, popular flag, hidden price) |
 | `coverage_areas` | Wilayah cakupan (active/inactive toggle) |
 | `clients` | Data klien (industry, contact person) |
@@ -240,4 +253,5 @@ Frontend di-*serve* dari Express sebagai static files.
 - **Bot hanya bisa kirim pesan** ke user yang pernah chat bot sebelumnya
 - **`admin123`** adalah password default untuk semua seed admin users
 - **Dark theme**: `#0a0a0f` base, Plus Jakarta Sans font, glassmorphism
+- **Vite proxy**: `/api` dan `/uploads` di-proxy ke `http://localhost:3001`
 - **Node.js 18+** diperlukan untuk native `fetch` support
