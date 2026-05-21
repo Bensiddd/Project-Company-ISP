@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { HiArrowRight, HiLightningBolt, HiGlobe, HiShieldCheck, HiUserGroup, HiMail, HiPhone, HiLocationMarker } from 'react-icons/hi';
 import { statsData } from '../data/mockData';
-import { blogPostsAPI, coverageAreasAPI } from '../services/api';
+import { blogPostsAPI, coverageAreasAPI, websiteSettingsAPI } from '../services/api';
 import Particles from '../components/Particles';
 import StatsCounter from '../components/StatsCounter';
 import PricingSection from '../components/PricingSection';
@@ -28,6 +28,13 @@ const Home = () => {
   const [contactForm, setContactForm] = useState({ name: '', email: '', whatsapp: '', subject: '', message: '' });
   const [contactSent, setContactSent] = useState(false);
   const [contactSending, setContactSending] = useState(false);
+  const [homeContact, setHomeContact] = useState({});
+
+  useEffect(() => {
+    websiteSettingsAPI.get().then(({ data }) => {
+      setHomeContact(data || {});
+    }).catch(err => console.error('Home: failed to load settings', err));
+  }, []);
 
   useEffect(() => {
     blogPostsAPI.getAll().then(({ data }) => {
@@ -312,21 +319,21 @@ const Home = () => {
                   <div className="contact-info-icon"><HiLocationMarker /></div>
                   <div>
                     <h4>Alamat</h4>
-                    <p>Perumahan Grand Wisata, Kab. Bekasi</p>
+                    <p>{homeContact.address || 'Perumahan Grand Wisata, Kab. Bekasi'}</p>
                   </div>
                 </div>
                 <div className="contact-info-item">
                   <div className="contact-info-icon"><HiMail /></div>
                   <div>
                     <h4>Email</h4>
-                    <p>info@maznet.id</p>
+                    <p>{homeContact.email || 'info@maznet.id'}</p>
                   </div>
                 </div>
                 <div className="contact-info-item">
                   <div className="contact-info-icon"><HiPhone /></div>
                   <div>
                     <h4>Telepon</h4>
-                    <p>(021) 1234-5678</p>
+                    <p>{homeContact.phone || '(021) 1234-5678'}</p>
                   </div>
                 </div>
               </div>

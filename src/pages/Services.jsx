@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { HiCheck, HiChip, HiCode, HiCollection, HiChartBar, HiLightningBolt, HiArrowRight } from 'react-icons/hi';
 import { servicePackagesAPI } from '../services/api';
+import Particles from '../components/Particles';
 import './Services.css';
 
 const iconMap = [HiChip, HiCode, HiChartBar, HiCollection, HiLightningBolt];
@@ -19,6 +20,7 @@ const Services = () => {
   return (
     <div className="services">
       <section className="page-header">
+        <Particles count={40} speed={0.3} />
         <div className="container">
           <h1>Paket Internet MAZNET</h1>
           <p>Pilih paket internet yang sesuai dengan kebutuhan Anda. Dari rumah tangga hingga perusahaan.</p>

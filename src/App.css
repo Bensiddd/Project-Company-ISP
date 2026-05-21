@@ -487,6 +487,8 @@ select.form-control { cursor: pointer; appearance: auto; }
 .settings-section-header svg { width: 18px; height: 18px; color: var(--primary); }
 .settings-section-header h2 { font-size: 16px; font-weight: 600; color: var(--text-primary); }
 .settings-section-body { padding: 24px; }
+.settings-footer { display: flex; align-items: center; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
+.settings-footer .btn { margin-left: auto; min-width: 160px; }
 
 /* ── Responsive ── */
 @media (max-width: 1024px) {

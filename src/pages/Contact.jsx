@@ -1,13 +1,21 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { HiMail, HiPhone, HiLocationMarker, HiCheckCircle } from 'react-icons/hi';
-import { contactMessagesAPI } from '../services/api';
+import { contactMessagesAPI, websiteSettingsAPI } from '../services/api';
+import Particles from '../components/Particles';
 import './Contact.css';
 
 const Contact = () => {
+  const [contactInfo, setContactInfo] = useState({});
   const [formData, setFormData] = useState({ name: '', email: '', whatsapp: '', subject: '', message: '' });
   const [submitted, setSubmitted] = useState(false);
   const [sending, setSending] = useState(false);
+
+  useEffect(() => {
+    websiteSettingsAPI.get().then(({ data }) => {
+      setContactInfo(data || {});
+    }).catch(err => console.error('Contact: failed to load settings', err));
+  }, []);
 
   const handleChange = e => setFormData({ ...formData, [e.target.name]: e.target.value });
 
@@ -30,6 +38,7 @@ const Contact = () => {
     return (
       <div className="contact">
         <section className="page-header">
+          <Particles count={40} speed={0.3} />
           <div className="container">
             <h1>Contact Us</h1>
             <p>We'd love to hear from you</p>
@@ -58,6 +67,7 @@ const Contact = () => {
   return (
     <div className="contact">
       <section className="page-header">
+        <Particles count={40} speed={0.3} />
         <div className="container">
           <h1>Contact Us</h1>
           <p>We'd love to hear from you</p>
@@ -80,21 +90,21 @@ const Contact = () => {
                   <div className="contact-info-icon"><HiLocationMarker /></div>
                   <div>
                     <h4>Visit Us</h4>
-                    <p>Perumahan Grand Wisata, Kab. Bekasi</p>
+                    <p>{contactInfo.address || 'Perumahan Grand Wisata, Kab. Bekasi'}</p>
                   </div>
                 </div>
                 <div className="contact-info-item">
                   <div className="contact-info-icon"><HiMail /></div>
                   <div>
                     <h4>Email Us</h4>
-                    <p>info@maznet.id</p>
+                    <p>{contactInfo.email || 'info@maznet.id'}</p>
                   </div>
                 </div>
                 <div className="contact-info-item">
                   <div className="contact-info-icon"><HiPhone /></div>
                   <div>
                     <h4>Call Us</h4>
-                    <p>(021) 1234-5678</p>
+                    <p>{contactInfo.phone || '(021) 1234-5678'}</p>
                   </div>
                 </div>
               </div>

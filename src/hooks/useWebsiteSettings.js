@@ -1,28 +1,29 @@
 import { useState, useEffect } from 'react';
 import { websiteSettingsAPI } from '../services/api';
 
-let cachedSettings = null;
-let cachedPromise = null;
+let inFlightPromise = null;
 
 export default function useWebsiteSettings() {
-  const [settings, setSettings] = useState(cachedSettings || {});
-  const [loading, setLoading] = useState(!cachedSettings);
+  const [settings, setSettings] = useState({});
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (cachedSettings) return;
-    if (cachedPromise) {
-      cachedPromise.then(data => { setSettings(data); setLoading(false); });
-      return;
-    }
-    cachedPromise = websiteSettingsAPI.get().then(({ data }) => {
-      const s = data && data.id ? data : {};
-      cachedSettings = s;
-      setSettings(s);
-      setLoading(false);
-      return s;
-    }).catch(() => {
-      setLoading(false);
-    });
+    let cancelled = false;
+    const doFetch = async () => {
+      if (!inFlightPromise) {
+        inFlightPromise = websiteSettingsAPI.get()
+          .then(({ data }) => data && data.id ? data : {})
+          .catch((err) => { console.error('useWebsiteSettings fetch failed:', err); return {}; })
+          .finally(() => { inFlightPromise = null; });
+      }
+      const result = await inFlightPromise;
+      if (!cancelled) {
+        setSettings(result);
+        setLoading(false);
+      }
+    };
+    doFetch();
+    return () => { cancelled = true; };
   }, []);
 
   return { settings, loading };

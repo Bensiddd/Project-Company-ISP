@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { HiArrowRight } from 'react-icons/hi';
 import { blogPostsAPI } from '../services/api';
+import Particles from '../components/Particles';
 import './Blog.css';
 
 const Blog = () => {
@@ -18,6 +19,7 @@ const Blog = () => {
   return (
     <div className="blog">
       <section className="page-header">
+        <Particles count={40} speed={0.3} />
         <div className="container">
           <h1>Our Blog</h1>
           <p>Latest insights and updates from our team</p>
