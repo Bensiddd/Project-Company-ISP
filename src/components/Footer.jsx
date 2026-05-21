@@ -2,11 +2,11 @@ import React from 'react';
 import { Link } from 'react-router-dom';
 import { HiMail, HiPhone, HiLocationMarker, HiGlobe } from 'react-icons/hi';
 import { FaFacebookF, FaTwitter, FaInstagram, FaLinkedinIn } from 'react-icons/fa';
-import { mockWebsiteSettings } from '../data/mockData';
+import useWebsiteSettings from '../hooks/useWebsiteSettings';
 import './Footer.css';
 
 const Footer = () => {
-  const s = mockWebsiteSettings;
+  const { settings: s } = useWebsiteSettings();
 
   return (
     <footer className="footer">
@@ -18,7 +18,7 @@ const Footer = () => {
               <div className="footer-logo-icon">
                 <HiGlobe size={20} />
               </div>
-              <span>MAZNET</span>
+              <span>{s.company_name || 'MAZNET'}</span>
             </div>
             <p className="footer-desc">{s.description}</p>
             <div className="footer-social">
@@ -68,7 +68,7 @@ const Footer = () => {
         </div>
 
         <div className="footer-bottom">
-          <p>&copy; {new Date().getFullYear()} MAZNET. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} {s.company_name || 'MAZNET'}. All rights reserved.</p>
           <div className="footer-bottom-links">
             <Link to="#">Kebijakan Privasi</Link>
             <Link to="#">Syarat & Ketentuan</Link>

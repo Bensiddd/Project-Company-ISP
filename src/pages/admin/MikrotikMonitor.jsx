@@ -37,7 +37,7 @@ const MikrotikMonitor = () => {
   const [trafficError, setTrafficError] = useState(null);
   const [pppoePage, setPppoePage] = useState(1);
   const [showSettings, setShowSettings] = useState(false);
-  const [settings, setSettings] = useState({ host: '', username: '', password: '', port: 8728 });
+  const [settings, setSettings] = useState({ host: '', username: '', password: '', passwordMask: '', port: 8728 });
   const [saving, setSaving] = useState(false);
   const PER_PAGE = 10;
   const liveRef = useRef({ rx: 0, tx: 0 });
@@ -75,7 +75,7 @@ const MikrotikMonitor = () => {
   const fetchSettings = useCallback(async () => {
     try {
       const { data } = await mikrotikAPI.getSettings();
-      setSettings({ host: data.host || '', username: data.username || '', password: data.password || '', port: data.port || 8728 });
+      setSettings({ host: data.host || '', username: data.username || '', password: '', passwordMask: data.password || '', port: data.port || 8728 });
     } catch { /* ignore */ }
   }, []);
 
@@ -150,8 +150,12 @@ const MikrotikMonitor = () => {
   const handleSaveSettings = async () => {
     setSaving(true);
     try {
-      const { data } = await mikrotikAPI.saveSettings(settings);
-      setSettings({ host: data.host, username: data.username, password: '', port: data.port });
+      // Omit empty password so backend preserves the existing stored value
+      const payload = { ...settings };
+      if (!payload.password) delete payload.password;
+      delete payload.passwordMask;
+      const { data } = await mikrotikAPI.saveSettings(payload);
+      setSettings({ host: data.host, username: data.username, password: '', passwordMask: settings.passwordMask, port: data.port });
       setShowSettings(false);
       setTimeout(reloadAll, 500);
     } catch (e) { alert('Gagal menyimpan: ' + (e.response?.data?.message || e.message)); }
@@ -195,7 +199,7 @@ const MikrotikMonitor = () => {
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
           <button className="btn btn-secondary" onClick={reloadAll}><HiRefresh /> Refresh</button>
-          <button className="btn btn-primary" onClick={() => { mikrotikAPI.getSettings().then(({data}) => setSettings({ host: data.host || '', username: data.username || '', password: '', port: data.port || 8728 })); setShowSettings(true); }}>
+          <button className="btn btn-primary" onClick={() => { mikrotikAPI.getSettings().then(({data}) => setSettings({ host: data.host || '', username: data.username || '', password: '', passwordMask: data.password || '', port: data.port || 8728 })); setShowSettings(true); }}>
             <HiCog /> Settings
           </button>
         </div>
@@ -348,7 +352,10 @@ const MikrotikMonitor = () => {
                 <div className="form-group"><label>Host / IP Address</label><input type="text" className="form-control" value={settings.host} onChange={e => setSettings({...settings, host: e.target.value})} placeholder="192.168.88.1" required /></div>
                 <div className="form-group"><label>Port</label><input type="number" className="form-control" value={settings.port} onChange={e => setSettings({...settings, port: parseInt(e.target.value) || 8728})} placeholder="8728" /></div>
                 <div className="form-group"><label>Username</label><input type="text" className="form-control" value={settings.username} onChange={e => setSettings({...settings, username: e.target.value})} placeholder="admin" required /></div>
-                <div className="form-group"><label>Password</label><input type="password" className="form-control" value={settings.password} onChange={e => setSettings({...settings, password: e.target.value})} placeholder="Router password" required /></div>
+                <div className="form-group">
+                  <label>Password {settings.passwordMask && <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>(tersimpan: {settings.passwordMask} — kosongkan untuk mempertahankan)</span>}</label>
+                  <input type="password" className="form-control" value={settings.password} onChange={e => setSettings({...settings, password: e.target.value})} placeholder={settings.passwordMask || 'Router password'} autoComplete="new-password" required={!settings.passwordMask} />
+                </div>
                 <div className="form-actions">
                   <button type="button" className="btn btn-secondary" onClick={() => setShowSettings(false)} disabled={saving}>Cancel</button>
                   <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving...' : 'Save & Connect'}</button>

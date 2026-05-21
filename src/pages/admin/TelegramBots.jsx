@@ -4,7 +4,8 @@ import FormModal from '../../components/FormModal';
 import { HiChatAlt2, HiShieldCheck, HiExclamationCircle, HiRefresh, HiGlobe } from 'react-icons/hi';
 import { telegramBotsAPI, telegramAPI } from '../../services/api';
 
-const initialForm = { name: '', bot_token: '', admin_chat_id: '', is_active: true, role: 'admin', ai_enabled: false, ai_provider: '', ai_model: '', ai_api_key: '', ai_url: '' };
+const DEFAULT_SYSTEM_PROMPT = 'Anda adalah customer service MAZNET, ISP RT RW NET di Bekasi. Jawab dengan ramah, profesional, dan ringkas dalam Bahasa Indonesia. Jangan mengulangi jawaban yang sudah pernah Anda berikan sebelumnya dalam percakapan ini.';
+const initialForm = { name: '', bot_token: '', admin_chat_id: '', is_active: true, role: 'admin', ai_enabled: false, ai_provider: '', ai_model: '', ai_api_key: '', ai_url: '', system_prompt: '' };
 const roleLabels = { customer_service: 'CS (AI)', admin: 'Admin', teknisi: 'Teknisi' };
 const roleColors = { customer_service: '#10b981', admin: '#6366f1', teknisi: '#f59e0b' };
 
@@ -80,7 +81,10 @@ const TelegramBots = () => {
     try {
       const payload = { ...form };
       if (payload.role !== 'customer_service') {
-        payload.ai_enabled = false; payload.ai_provider = ''; payload.ai_model = ''; payload.ai_api_key = ''; payload.ai_url = '';
+        payload.ai_enabled = false; payload.ai_provider = ''; payload.ai_model = ''; payload.ai_api_key = ''; payload.ai_url = ''; payload.system_prompt = '';
+      } else if (editing && !payload.ai_api_key) {
+        // Don't overwrite stored key when user leaves field empty on edit
+        delete payload.ai_api_key;
       }
       if (editing) {
         const { data } = await telegramBotsAPI.update(editing.id, payload);
@@ -230,9 +234,9 @@ const TelegramBots = () => {
 
               <div className="service-card-actions">
                 <button className="btn btn-secondary btn-sm" onClick={() => {
-                  setEditing(bot);
+                  setEditing({ ...bot, ai_api_key_masked: bot.ai_api_key || '' });
                   setAiTestResult(null);
-                  setForm({ name: bot.name, bot_token: bot.bot_token, admin_chat_id: bot.admin_chat_id || '', is_active: bot.is_active, role: bot.role || 'admin', ai_enabled: !!bot.ai_enabled, ai_provider: bot.ai_provider || '', ai_model: bot.ai_model || '', ai_api_key: bot.ai_api_key || '', ai_url: bot.ai_url || '' });
+                  setForm({ name: bot.name, bot_token: bot.bot_token, admin_chat_id: bot.admin_chat_id || '', is_active: bot.is_active, role: bot.role || 'admin', ai_enabled: !!bot.ai_enabled, ai_provider: bot.ai_provider || '', ai_model: bot.ai_model || '', ai_api_key: '', ai_url: bot.ai_url || '', system_prompt: bot.system_prompt || '' });
                   setShowForm(true);
                 }}>Edit</button>
                 <button className="btn btn-primary btn-sm" onClick={() => handleFullTest(bot)}>Test</button>
@@ -318,10 +322,16 @@ const TelegramBots = () => {
                 )}
               </div>
 
+              {/* System Prompt (opsional) */}
+              <div className="form-group">
+                <label>System Prompt <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>(opsional — kosongkan untuk pakai default MAZNET CS)</span></label>
+                <textarea className="form-control" rows={5} value={form.system_prompt} onChange={e => setForm({ ...form, system_prompt: e.target.value })} placeholder={DEFAULT_SYSTEM_PROMPT} style={{ fontFamily: 'inherit', resize: 'vertical' }} />
+              </div>
+
               {/* API Key */}
               <div className="form-group">
-                <label>AI API Key</label>
-                <input type="password" className="form-control" value={form.ai_api_key} onChange={e => setForm({ ...form, ai_api_key: e.target.value })} placeholder="sk-..." />
+                <label>AI API Key {editing?.ai_api_key_masked && <span style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 400 }}>(tersimpan: {editing.ai_api_key_masked} — kosongkan untuk mempertahankan)</span>}</label>
+                <input type="password" className="form-control" value={form.ai_api_key} onChange={e => setForm({ ...form, ai_api_key: e.target.value })} placeholder={editing?.ai_api_key_masked || 'sk-...'} autoComplete="new-password" />
               </div>
 
               {/* API URL */}

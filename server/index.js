@@ -49,6 +49,19 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/mikrotik', mikrotikRoutes);
 app.use('/api/upload', uploadRoutes);
 
+// ── Global error handlers ──────────────────────────────────────────────
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception:', err);
+});
+
+app.use((err, _req, res, _next) => {
+  console.error('Express error:', err);
+  res.status(500).json({ message: 'Internal server error' });
+});
+
 app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });

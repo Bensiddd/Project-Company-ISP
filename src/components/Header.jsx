@@ -2,9 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { HiMenu, HiX, HiGlobe } from 'react-icons/hi';
+import useWebsiteSettings from '../hooks/useWebsiteSettings';
 import './Header.css';
 
 const Header = () => {
+  const { settings } = useWebsiteSettings();
+  const companyName = settings.company_name || 'MAZNET';
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
@@ -69,7 +72,7 @@ const Header = () => {
           <div className="logo-icon">
             <HiGlobe size={20} />
           </div>
-          <span className="logo-text">MAZNET</span>
+            <span className="logo-text">{companyName}</span>
         </Link>
 
         <ul className="nav-links">

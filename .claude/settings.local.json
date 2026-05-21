@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker compose *)",
+      "Bash(powershell *)",
+      "Bash(npm run *)",
+      "Bash(npm --version)",
+      "Bash(docker --version)",
+      "Bash(curl -s http://localhost:3001/api/health)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(npm ls *)",
+      "Bash(curl -s -X POST http://localhost:3001/api/auth/login -H \"Content-Type: application/json\" -d '{\"email\":\"admin@maznet.id\",\"password\":\"admin123\"}')",
+      "Bash(curl -s http://localhost:3001/api/service-packages)",
+      "Bash(curl -s http://localhost:3001/api/coverage-areas)",
+      "Bash(curl -s http://localhost:3001/api/blog-posts)",
+      "Bash(curl -s -o /tmp/landing.html -w \"HTTP %{http_code} | size=%{size_download}\\\\n\" http://localhost:5173/)",
+      "Read(//tmp/**)",
+      "Bash(node *)"
+    ]
+  }
+}

@@ -49,6 +49,18 @@ router.put('/:id', authenticate, async (req, res) => {
   res.json(ticket);
 });
 
+router.delete('/', authenticate, async (req, res) => {
+  if (!['super_admin', 'admin'].includes(req.user.role)) {
+    return res.status(403).json({ message: 'Forbidden: only super_admin and admin can delete all tickets' });
+  }
+  const tickets = await db.all('SELECT id, title FROM tickets');
+  for (const t of tickets) {
+    await db.logActivity('ticket', 'Ticket dihapus', '#' + t.id + ' ' + t.title, req.user?.id);
+  }
+  await db.run('DELETE FROM tickets');
+  res.json({ message: 'All tickets deleted successfully', count: tickets.length });
+});
+
 router.delete('/:id', authenticate, async (req, res) => {
   const existing = await db.get('SELECT id, title FROM tickets WHERE id = ?', [req.params.id]);
   if (!existing) return res.status(404).json({ message: 'Ticket not found' });

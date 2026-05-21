@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import db from './db.js';
+import { encrypt, isEncrypted } from './utils/encryption.js';
 
 const sqls = [
   `CREATE TABLE IF NOT EXISTS coverage_areas (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL, description TEXT, is_active TINYINT(1) DEFAULT 1, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB`,
@@ -66,6 +67,56 @@ try {
   await db.run("UPDATE blog_posts SET tags = NULL WHERE tags IS NOT NULL AND tags != '' AND LEFT(tags, 1) != '['");
 } catch (e) {
   console.error('Migration note:', e.message);
+}
+
+// Resize ai_api_key to fit AES-GCM ciphertext (base64 IV + tag + content)
+try {
+  await db.run('ALTER TABLE telegram_bots MODIFY COLUMN ai_api_key VARCHAR(1024)');
+} catch (e) {
+  console.error('Migration note (ai_api_key resize):', e.message);
+}
+
+// Add per-bot system_prompt (editable, falls back to default when empty)
+try {
+  await db.run('ALTER TABLE telegram_bots ADD COLUMN system_prompt TEXT AFTER ai_url');
+} catch (e) {
+  if (!e.message.includes('Duplicate column')) console.error('Migration note (system_prompt):', e.message);
+}
+
+// Encrypt existing plaintext ai_api_key values (idempotent: skip if already encrypted)
+if (process.env.ENCRYPTION_KEY) {
+  try {
+    const bots = await db.all('SELECT id, ai_api_key FROM telegram_bots WHERE ai_api_key IS NOT NULL AND ai_api_key != ""');
+    let migrated = 0;
+    for (const bot of bots) {
+      if (!isEncrypted(bot.ai_api_key)) {
+        await db.run('UPDATE telegram_bots SET ai_api_key=? WHERE id=?', [encrypt(bot.ai_api_key), bot.id]);
+        migrated++;
+      }
+    }
+    if (migrated > 0) console.log(`Encrypted ${migrated} ai_api_key value(s) in telegram_bots.`);
+  } catch (e) {
+    console.error('AI key encryption migration:', e.message);
+  }
+
+  // Re-encrypt mikrotik passwords (current format: base64 → AES-GCM)
+  try {
+    const settings = await db.all('SELECT id, password FROM mikrotik_settings WHERE password IS NOT NULL AND password != ""');
+    let migrated = 0;
+    for (const row of settings) {
+      if (!isEncrypted(row.password)) {
+        const decoded = Buffer.from(row.password, 'base64').toString('utf-8');
+        await db.run('UPDATE mikrotik_settings SET password=? WHERE id=?', [encrypt(decoded), row.id]);
+        migrated++;
+      }
+    }
+    if (migrated > 0) console.log(`Encrypted ${migrated} password(s) in mikrotik_settings.`);
+  } catch (e) {
+    console.error('Mikrotik password encryption migration:', e.message);
+  }
+} else {
+  console.warn('⚠️  ENCRYPTION_KEY not set — skipping encryption migration for ai_api_key and mikrotik password.');
+  console.warn('   Add ENCRYPTION_KEY to server/.env then re-run: node migrate.js');
 }
 
 console.log('All tables created successfully.');

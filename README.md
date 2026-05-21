@@ -152,7 +152,7 @@ server/
 - **Logs** dari router (filtered: exclude telnet/debug/api)
 - **PPPoE aktif** — daftar session + pagination
 - Auto-refresh traffic history + logs
-- Settings modal (host, port, username, password) — password dienkripsi base64
+- Settings modal (host, port, username, password) — password dienkripsi **AES-256-GCM** (lihat `ENCRYPTION_KEY`)
 
 ### 🤖 AI Webhook
 - Multi-provider: OpenAI, Gemini, Claude, OpenRouter, Custom API
@@ -198,7 +198,7 @@ server/
 | `telegram_conversations` | Percakapan per user (state machine, pending_data, cooldown_until, unread) |
 | `telegram_messages` | Riwayat pesan (user/bot) |
 | `website_settings` | Pengaturan website (company, contact, social media) |
-| `mikrotik_settings` | Konfigurasi koneksi RouterOS (host, user, password terenkripsi base64) |
+| `mikrotik_settings` | Konfigurasi koneksi RouterOS (host, user, password terenkripsi AES-256-GCM) |
 | `traffic_history` | Riwayat traffic per interface (RX/TX per sample) |
 | `activity_logs` | Log aktivitas admin (type, action, detail, user_id) |
 
@@ -218,16 +218,21 @@ cd server && npm install         # Backend dependencies
 cd ..
 
 # 2. Copy environment
-cp server/.env.example server/.env   # Sesuaikan jika perlu
+cp server/.env.example server/.env
 
-# 3. Start MySQL + phpMyAdmin
+# 3. Generate ENCRYPTION_KEY (untuk enkripsi ai_api_key & mikrotik password)
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+# → Salin output ke server/.env sebagai ENCRYPTION_KEY=<hex>
+# ⚠️ Jangan ganti kunci ini setelah ada data terenkripsi (akan kehilangan akses)
+
+# 4. Start MySQL + phpMyAdmin
 docker compose up -d                 # MySQL (3306) + phpMyAdmin (8080)
 
-# 4. Inisialisasi database
-node server/migrate.js               # Create 16 tabel
+# 5. Inisialisasi database
+node server/migrate.js               # Create 16 tabel + encrypt existing secrets
 node server/seed.js                  # Seed data awal MAZNET
 
-# 5. Development (2 terminal)
+# 6. Development (2 terminal)
 npm run dev                          # Frontend Vite (port 5173)
 node server/index.js                 # Backend Express (port 3001)
 ```
@@ -249,7 +254,7 @@ Frontend di-*serve* dari Express sebagai static files.
 - **AI template default**: Bot baru `ai_enabled=0` — hanya balas dengan template "Ada yang bisa saya bantu?" + MAIN_MENU. Aktifkan AI via toggle di dashboard
 - **Cooldown 6 jam**: Setelah membuat ticket/install/upgrade via Telegram. Auto-clear jika ticket dihapus atau status closed
 - **Cooldown bypass**: `talk_to_cs`, `end_session`, `back_to_menu`, `/start`, `/stop`, menu, batal — tidak kena cooldown
-- **Password Mikrotik**: disimpan di database dalam base64 (bukan encryption sesungguhnya)
+- **Enkripsi rahasia**: `ai_api_key` (telegram_bots) dan `password` (mikrotik_settings) dienkripsi AES-256-GCM dengan `ENCRYPTION_KEY` dari `.env`. Format ciphertext: `enc:<base64-iv>:<base64-tag>:<base64-ct>`. API response menampilkan masked `••••<last4>` saja — raw value tidak pernah dikirim ke frontend
 - **Bot hanya bisa kirim pesan** ke user yang pernah chat bot sebelumnya
 - **`admin123`** adalah password default untuk semua seed admin users
 - **Dark theme**: `#0a0a0f` base, Plus Jakarta Sans font, glassmorphism

@@ -39,7 +39,7 @@ const BlogPosts = () => {
 
   const handleDelete = async (id) => { try { await blogPostsAPI.delete(id); setPosts(prev => prev.filter(p => p.id !== id)); } catch (e) { console.error(e); } };
 
-  const handleToggle = async (id) => { try { const p = posts.find(p => p.id === id); const { data } = await blogPostsAPI.update(id, { ...p, status: p.status === 'published' ? 'draft' : 'published' }); setPosts(prev => prev.map(p => p.id === id ? data : p)); } catch (e) { console.error(e); } };
+  const handleToggle = async (id) => { try { const p = posts.find(p => p.id === id); const { data } = await blogPostsAPI.update(id, { title: p.title, slug: p.slug, excerpt: p.excerpt, content: p.content, category: p.category, featured_image_url: p.featured_image_url, meta_description: p.meta_description, read_time: p.read_time, tags: p.tags, author_id: p.author_id, status: p.status === 'published' ? 'draft' : 'published' }); setPosts(prev => prev.map(p => p.id === id ? data : p)); } catch (e) { console.error(e); } };
 
   return (
     <DataTable columns={columns} data={posts} searchKeys={['title', 'excerpt', 'category', 'author_name']} loading={loading} title="Blog Posts" statusKey="status"

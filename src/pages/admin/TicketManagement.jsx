@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiClipboardList, HiFilter, HiUser, HiTrash, HiCheck, HiClock, HiExclamation, HiX } from 'react-icons/hi';
+import { HiClipboardList, HiFilter, HiUser, HiTrash, HiCheck, HiClock, HiExclamation, HiX, HiIdentification, HiLocationMarker, HiPhone, HiMail } from 'react-icons/hi';
 import { ticketsAPI, adminUsersAPI } from '../../services/api';
 import './TicketManagement.css';
 
@@ -9,6 +9,28 @@ const typeColors = { maintenance: '#f59e0b', upgrade: '#6366f1', installation: '
 const statusLabels = { open: 'Open', in_progress: 'In Progress', resolved: 'Resolved', closed: 'Closed' };
 const priorityLabels = { low: 'Low', medium: 'Medium', high: 'High', checking: 'Checking' };
 const priorityColors = { low: '#6b7280', medium: '#f59e0b', high: '#ef4444', checking: '#3b82f6' };
+
+const INFO_ICONS = { nama: HiUser, 'id pelanggan': HiIdentification, alamat: HiLocationMarker, 'no hp': HiPhone, identitas: HiMail, lokasi: HiLocationMarker };
+
+function parseTicketDescription(desc) {
+  if (!desc) return { fields: [], keluhan: '' };
+  const lines = desc.split('\n');
+  const fields = [];
+  let keluhan = '';
+  let inKeluhan = false;
+  for (const line of lines) {
+    if (inKeluhan) { keluhan += (keluhan ? '\n' : '') + line; continue; }
+    const trimmed = line.trim();
+    const colonIdx = trimmed.indexOf(':');
+    if (colonIdx > 0) {
+      const key = trimmed.slice(0, colonIdx).trim().toLowerCase();
+      const val = trimmed.slice(colonIdx + 1).trim();
+      if (key === 'keluhan') { inKeluhan = true; if (val) keluhan = val; }
+      else if (val && val !== '-') fields.push({ label: trimmed.slice(0, colonIdx).trim(), value: val, key });
+    }
+  }
+  return { fields, keluhan };
+}
 
 const TicketManagement = () => {
   const [tickets, setTickets] = useState([]);
@@ -40,8 +62,8 @@ const TicketManagement = () => {
 
   const handleStatus = async (id, status) => {
     const ticket = tickets.find(t => t.id === id);
-    if (status === 'closed' && ticket?.status === 'resolved') {
-      setConfirmAction({ type: 'close', id, status, title: ticket.title });
+    if (status === 'closed') {
+      setConfirmAction({ type: 'close', id, status, title: ticket?.title });
       return;
     }
     try {
@@ -55,11 +77,18 @@ const TicketManagement = () => {
     setConfirmAction({ type: 'delete', id, title: ticket?.title });
   };
 
+  const handleDeleteAll = () => {
+    setConfirmAction({ type: 'deleteAll' });
+  };
+
   const executeConfirm = async () => {
     if (!confirmAction) return;
     const { type, id, status } = confirmAction;
     try {
-      if (type === 'delete') {
+      if (type === 'deleteAll') {
+        await ticketsAPI.deleteAll();
+        setTickets([]);
+      } else if (type === 'delete') {
         await ticketsAPI.delete(id);
         setTickets(prev => prev.filter(t => t.id !== id));
         if (expanded === id) setExpanded(null);
@@ -95,6 +124,9 @@ const TicketManagement = () => {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <div className="data-table-header">
         <div><h1>Ticketing</h1><span className="data-table-count">{tickets.length} tickets</span></div>
+        {!isTeknisi && tickets.length > 0 && (
+          <button className="btn btn-danger" onClick={handleDeleteAll}>🗑 Delete All</button>
+        )}
       </div>
 
       <div className="ticket-filters">
@@ -133,20 +165,42 @@ const TicketManagement = () => {
             </div>
             {t.assigned_name && <div className="ticket-card-assignee">Assigned to: {t.assigned_name}</div>}
 
-            {expanded === t.id && (
-              <motion.div className="ticket-expanded" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
-                {t.description && <div className="ticket-desc">{t.description}</div>}
-              </motion.div>
-            )}
+            {expanded === t.id && (() => {
+              const { fields, keluhan } = parseTicketDescription(t.description);
+              return (
+                <motion.div className="ticket-expanded" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+                  {fields.length > 0 && (
+                    <div className="ticket-info-grid">
+                      {fields.map((f, fi) => {
+                        const Icon = INFO_ICONS[f.key] || HiUser;
+                        return (
+                          <div key={fi} className="ticket-info-item">
+                            <span className="ticket-info-label"><Icon /> {f.label}</span>
+                            <span className="ticket-info-value">{/^https?:\/\//.test(f.value) ? <a href={f.value} target="_blank" rel="noopener noreferrer">{f.value}</a> : f.value}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {keluhan && (
+                    <div className="ticket-keluhan">
+                      <div className="ticket-keluhan-header">📋 Keluhan</div>
+                      <div className="ticket-keluhan-text">{keluhan}</div>
+                    </div>
+                  )}
+                  {!fields.length && !keluhan && t.description && <div className="ticket-desc">{t.description}</div>}
+                </motion.div>
+              );
+            })()}
 
             <div className="ticket-card-actions">
-              {!isTeknisi && (
+              {!isTeknisi && t.status !== 'closed' && (
                 <select className="form-control form-control-sm" value={t.assigned_to || ''} onChange={e => handleAssign(t.id, e.target.value || null)}>
                   <option value="">Assign...</option>
                   {admins.map(a => <option key={a.id} value={a.id}>{a.full_name}</option>)}
                 </select>
               )}
-              <select className="form-control form-control-sm" value={t.status} onChange={e => handleStatus(t.id, e.target.value)}>
+              <select className="form-control form-control-sm" value={t.status} onChange={e => handleStatus(t.id, e.target.value)} disabled={t.status === 'closed'}>
                 <option value="open">Open</option>
                 <option value="in_progress">In Progress</option>
                 <option value="resolved">Resolved</option>
@@ -169,17 +223,19 @@ const TicketManagement = () => {
             >
               <div className="confirm-header">
                 <HiExclamation />
-                <h3>{confirmAction.type === 'delete' ? 'Hapus Ticket' : 'Tutup Ticket'}</h3>
+                <h3>{confirmAction.type === 'deleteAll' ? 'Hapus Semua Ticket' : confirmAction.type === 'delete' ? 'Hapus Ticket' : 'Tutup Ticket'}</h3>
               </div>
               <p>
-                {confirmAction.type === 'delete'
+                {confirmAction.type === 'deleteAll'
+                  ? 'Yakin ingin menghapus SEMUA ticket? Tindakan ini tidak bisa dibatalkan!'
+                  : confirmAction.type === 'delete'
                   ? `Yakin ingin menghapus ticket "${confirmAction.title}"?`
-                  : `Ticket "${confirmAction.title}" sudah resolved. Tutup ticket ini?`}
+                  : `Yakin ingin menutup ticket "${confirmAction.title}"?`}
               </p>
               <div className="confirm-actions">
                 <button className="btn btn-secondary" onClick={() => setConfirmAction(null)}>Batal</button>
-                <button className={`btn ${confirmAction.type === 'delete' ? 'btn-danger' : 'btn-primary'}`} onClick={executeConfirm}>
-                  {confirmAction.type === 'delete' ? 'Ya, Hapus' : 'Ya, Tutup'}
+                <button className={`btn ${confirmAction.type !== 'close' ? 'btn-danger' : 'btn-primary'}`} onClick={executeConfirm}>
+                  {confirmAction.type === 'deleteAll' ? 'Ya, Hapus Semua' : confirmAction.type === 'delete' ? 'Ya, Hapus' : 'Ya, Tutup'}
                 </button>
               </div>
             </motion.div>

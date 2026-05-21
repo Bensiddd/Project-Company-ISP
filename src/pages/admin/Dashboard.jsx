@@ -32,7 +32,7 @@ const routeRoles = {
 };
 
 const allNavItems = [
-  { path: '/admin', label: 'Overview', icon: HiChartBar, roles: ['super_admin', 'admin', 'teknisi'] },
+  { path: '/admin', label: 'Overview', icon: HiChartBar, roles: ['super_admin'] },
   { path: '/admin/requests', label: 'Request Masuk', icon: HiInbox, roles: ['super_admin', 'admin'] },
   { path: '/admin/users', label: 'Admin Users', icon: HiUsers, roles: ['super_admin'] },
   { path: '/admin/blog', label: 'Blog Posts', icon: HiPencilAlt, roles: ['super_admin', 'admin', 'marketing', 'editor'] },

@@ -33,6 +33,16 @@
 
 .ticket-expanded { display: flex; flex-direction: column; gap: 12px; padding-top: 8px; border-top: 1px solid var(--border); }
 .ticket-desc { font-size: 14px; color: var(--text-secondary); padding: 12px; background: var(--bg-secondary); border-radius: var(--radius-lg); }
+
+.ticket-info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ticket-info-item { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; background: var(--bg-secondary); border-radius: var(--radius-lg); }
+.ticket-info-label { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 2px; }
+.ticket-info-label svg { font-size: 13px; }
+.ticket-info-value { font-size: 14px; font-weight: 600; color: var(--text-primary); word-break: break-word; }
+
+.ticket-keluhan { background: var(--bg-secondary); border-radius: var(--radius-lg); overflow: hidden; }
+.ticket-keluhan-header { font-size: 12px; font-weight: 700; padding: 10px 14px; background: rgba(245,158,11,0.1); color: #f59e0b; border-bottom: 1px solid var(--border); }
+.ticket-keluhan-text { font-size: 14px; color: var(--text-secondary); padding: 12px 14px; line-height: 1.6; white-space: pre-wrap; }
 .ticket-replies { display: flex; flex-direction: column; gap: 6px; max-height: 160px; overflow-y: auto; }
 .ticket-reply-item { font-size: 13px; color: var(--text-secondary); padding: 6px 10px; background: var(--bg-secondary); border-radius: var(--radius-md); }
 .ticket-reply-form { display: flex; gap: 8px; }

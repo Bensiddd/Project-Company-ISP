@@ -17,26 +17,31 @@ function buildMessages(systemPrompt, history, userMessage) {
   return msgs;
 }
 
-export async function callAI(provider, model, apiKey, userMessage, aiUrl, history = []) {
+export const DEFAULT_SYSTEM_PROMPT = 'Anda adalah customer service MAZNET, ISP RT RW NET di Bekasi. Jawab dengan ramah, profesional, dan ringkas dalam Bahasa Indonesia. Jangan mengulangi jawaban yang sudah pernah Anda berikan sebelumnya dalam percakapan ini.';
+
+function resolvePrompt(systemPrompt) {
+  return (systemPrompt && String(systemPrompt).trim()) ? String(systemPrompt) : DEFAULT_SYSTEM_PROMPT;
+}
+
+export async function callAI(provider, model, apiKey, userMessage, aiUrl, history = [], systemPrompt = null) {
+  const prompt = resolvePrompt(systemPrompt);
   switch (provider) {
     case 'openai':
-      return callOpenAI(model || 'gpt-4o-mini', apiKey, userMessage, aiUrl, false, history);
+      return callOpenAI(model || 'gpt-4o-mini', apiKey, userMessage, aiUrl, false, history, prompt);
     case 'openrouter':
-      return callOpenAI(model || 'openrouter/auto', apiKey, userMessage, aiUrl || 'https://openrouter.ai/api/v1', true, history);
+      return callOpenAI(model || 'openrouter/auto', apiKey, userMessage, aiUrl || 'https://openrouter.ai/api/v1', true, history, prompt);
     case 'gemini':
-      return callGemini(model || 'gemini-2.0-flash', apiKey, userMessage, aiUrl, history);
+      return callGemini(model || 'gemini-2.0-flash', apiKey, userMessage, aiUrl, history, prompt);
     case 'claude':
-      return callClaude(model || 'claude-3-haiku-20240307', apiKey, userMessage, aiUrl, history);
+      return callClaude(model || 'claude-3-haiku-20240307', apiKey, userMessage, aiUrl, history, prompt);
     case 'custom':
-      return callCustom(aiUrl || '', apiKey, userMessage, model || '', history);
+      return callCustom(aiUrl || '', apiKey, userMessage, model || '', history, prompt);
     default:
       return { ok: false, error: 'Unknown AI provider: ' + provider };
   }
 }
 
-const SYSTEM_PROMPT = 'Anda adalah customer service MAZNET, ISP RT RW NET di Bekasi. Jawab dengan ramah, profesional, dan ringkas dalam Bahasa Indonesia. Jangan mengulangi jawaban yang sudah pernah Anda berikan sebelumnya dalam percakapan ini.';
-
-async function callOpenAI(model, apiKey, userMessage, baseUrl, skipV1 = false, history = []) {
+async function callOpenAI(model, apiKey, userMessage, baseUrl, skipV1 = false, history = [], systemPrompt = DEFAULT_SYSTEM_PROMPT) {
   const cleanBase = (baseUrl || 'https://api.openai.com').replace(/\/+$/, '');
   const url = (skipV1 || cleanBase.endsWith('/v1') || cleanBase.endsWith('/v1/'))
     ? cleanBase.replace(/\/+$/, '') + '/chat/completions'
@@ -50,7 +55,7 @@ async function callOpenAI(model, apiKey, userMessage, baseUrl, skipV1 = false, h
       signal: controller.signal,
       body: JSON.stringify({
         model,
-        messages: buildMessages(SYSTEM_PROMPT, history, userMessage),
+        messages: buildMessages(systemPrompt, history, userMessage),
         max_tokens: 500
       })
     });
@@ -66,7 +71,7 @@ async function callOpenAI(model, apiKey, userMessage, baseUrl, skipV1 = false, h
   } catch (e) { return { ok: false, error: e.name === 'AbortError' ? 'Request timed out (20s)' : e.message }; }
 }
 
-async function callGemini(model, apiKey, userMessage, baseUrl, history = []) {
+async function callGemini(model, apiKey, userMessage, baseUrl, history = [], systemPrompt = DEFAULT_SYSTEM_PROMPT) {
   const url = (baseUrl || 'https://generativelanguage.googleapis.com').replace(/\/+$/, '') + `/v1beta/models/${model}:generateContent?key=${apiKey}`;
   // Build Gemini-style contents from history
   const contents = [];
@@ -75,7 +80,7 @@ async function callGemini(model, apiKey, userMessage, baseUrl, history = []) {
     const geminiRole = (h.role === 'user') ? 'user' : 'model';
     contents.push({ role: geminiRole, parts: [{ text: h.message }] });
   }
-  contents.push({ role: 'user', parts: [{ text: SYSTEM_PROMPT + '\n\nPertanyaan: ' + userMessage }] });
+  contents.push({ role: 'user', parts: [{ text: systemPrompt + '\n\nPertanyaan: ' + userMessage }] });
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 20000);
@@ -97,7 +102,7 @@ async function callGemini(model, apiKey, userMessage, baseUrl, history = []) {
   } catch (e) { return { ok: false, error: e.name === 'AbortError' ? 'Request timed out (20s)' : e.message }; }
 }
 
-async function callClaude(model, apiKey, userMessage, baseUrl, history = []) {
+async function callClaude(model, apiKey, userMessage, baseUrl, history = [], systemPrompt = DEFAULT_SYSTEM_PROMPT) {
   const url = (baseUrl || 'https://api.anthropic.com').replace(/\/+$/, '') + '/v1/messages';
   // Build Claude messages from history
   const prior = history.slice(0, -1);
@@ -112,7 +117,7 @@ async function callClaude(model, apiKey, userMessage, baseUrl, history = []) {
       signal: controller.signal,
       body: JSON.stringify({
         model, max_tokens: 500,
-        system: SYSTEM_PROMPT,
+        system: systemPrompt,
         messages: claudeMsgs
       })
     });
@@ -128,7 +133,7 @@ async function callClaude(model, apiKey, userMessage, baseUrl, history = []) {
   } catch (e) { return { ok: false, error: e.name === 'AbortError' ? 'Request timed out (20s)' : e.message }; }
 }
 
-async function callCustom(url, apiKey, userMessage, model, history = []) {
+async function callCustom(url, apiKey, userMessage, model, history = [], systemPrompt = DEFAULT_SYSTEM_PROMPT) {
   if (!url) return { ok: false, error: 'Custom API URL is required' };
   try {
     const controller = new AbortController();
@@ -141,7 +146,7 @@ async function callCustom(url, apiKey, userMessage, model, history = []) {
       signal: controller.signal,
       body: JSON.stringify({
         model,
-        messages: buildMessages(SYSTEM_PROMPT, history, userMessage),
+        messages: buildMessages(systemPrompt, history, userMessage),
         max_tokens: 500
       })
     });

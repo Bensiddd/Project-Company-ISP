@@ -2,18 +2,9 @@ import { Router } from 'express';
 import { RouterOSAPI } from 'node-routeros';
 import db from '../db.js';
 import { authenticate } from '../middleware/auth.js';
+import { encrypt, decrypt, maskSecret } from '../utils/encryption.js';
 
 const router = Router();
-
-function encodePassword(pw) {
-  return Buffer.from(pw || '').toString('base64');
-}
-
-function decodePassword(enc) {
-  try {
-    return Buffer.from(enc || '', 'base64').toString('utf-8');
-  } catch { return ''; }
-}
 
 let mikrotikConn = null;
 let currentConfigHash = '';
@@ -45,7 +36,7 @@ async function getMikrotikConnection() {
   if (!connectPromise) {
     connectPromise = (async () => {
       await closeMikrotikConn();
-      const pw = decodePassword(config.password);
+      const pw = decrypt(config.password);
         const conn = new RouterOSAPI({
           host: config.host,
           user: config.username,
@@ -70,7 +61,11 @@ async function getMikrotikConnection() {
 router.get('/settings', authenticate, async (_req, res) => {
   const row = await db.get('SELECT * FROM mikrotik_settings ORDER BY id DESC LIMIT 1');
   if (row) {
-    row.password = decodePassword(row.password);
+    try {
+      row.password = row.password ? maskSecret(decrypt(row.password)) : '';
+    } catch {
+      row.password = row.password ? '••••(invalid)' : '';
+    }
     res.json(row);
   } else {
     res.json({ host: '', username: '', password: '', port: 8728, is_active: 0 });
@@ -79,12 +74,15 @@ router.get('/settings', authenticate, async (_req, res) => {
 
 router.post('/settings', authenticate, async (req, res) => {
   const { host, username, password, port } = req.body;
-  const encoded = encodePassword(password);
-  const existing = await db.get('SELECT id FROM mikrotik_settings ORDER BY id DESC LIMIT 1');
+  const existing = await db.get('SELECT * FROM mikrotik_settings ORDER BY id DESC LIMIT 1');
+  // Preserve existing encrypted password if caller didn't send a new one
+  const storedPassword = (password && password.length > 0)
+    ? encrypt(password)
+    : (existing ? existing.password : '');
   if (existing) {
-    await db.run('UPDATE mikrotik_settings SET host=?, username=?, password=?, port=?, is_active=1, updated_at=CURRENT_TIMESTAMP WHERE id=?', [host || '', username || '', encoded, port || 8728, existing.id]);
+    await db.run('UPDATE mikrotik_settings SET host=?, username=?, password=?, port=?, is_active=1, updated_at=CURRENT_TIMESTAMP WHERE id=?', [host || '', username || '', storedPassword, port || 8728, existing.id]);
   } else {
-    await db.insert('INSERT INTO mikrotik_settings (host, username, password, port, is_active) VALUES (?, ?, ?, ?, 1)', [host || '', username || '', encoded, port || 8728]);
+    await db.insert('INSERT INTO mikrotik_settings (host, username, password, port, is_active) VALUES (?, ?, ?, ?, 1)', [host || '', username || '', storedPassword, port || 8728]);
   }
   await closeMikrotikConn();
   const row = await db.get('SELECT * FROM mikrotik_settings ORDER BY id DESC LIMIT 1');
