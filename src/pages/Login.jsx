@@ -6,7 +6,7 @@ import { authAPI } from '../services/api';
 import Particles from '../components/Particles';
 
 const roleFirstRoute = {
-  super_admin: '/admin',
+  administrator: '/admin',
   admin: '/admin',
   teknisi: '/admin',
   cs: '/admin/tickets',

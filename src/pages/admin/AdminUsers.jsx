@@ -31,7 +31,7 @@ const AdminUsers = () => {
     { key: 'username', label: 'Username', render: item => <div><span className="fw-600">{item.username}</span><div className="text-muted small">{item.full_name}</div></div> },
     { key: 'email', label: 'Email' },
     { key: 'role', label: 'Role', render: item => {
-      const colors = { super_admin: 'var(--primary)', admin: 'var(--success)', editor: 'var(--warning)', teknisi: '#f59e0b', cs: '#8b5cf6', marketing: '#06b6d4' };
+      const colors = { administrator: '#6366f1', admin: '#10b981', editor: '#f59e0b', teknisi: '#f59e0b', cs: '#8b5cf6', marketing: '#06b6d4' };
       return <span className="badge" style={{ background: `${colors[item.role] || '#666'}20`, color: colors[item.role] || '#666' }}>{item.role.replace('_', ' ')}</span>;
     }},
     { key: 'is_active', label: 'Status', render: item => <span className={`status-pill ${item.is_active ? 'active' : 'inactive'}`}>{item.is_active ? 'Active' : 'Inactive'}</span> },
@@ -75,7 +75,7 @@ const AdminUsers = () => {
         <div className="form-row">
           <div className="form-group"><label>Role</label>
             <select className="form-control" value={form.role} onChange={e => setForm({...form, role: e.target.value})}>
-              <option value="admin">Admin</option><option value="super_admin">Super Admin</option><option value="cs">CS</option><option value="marketing">Marketing</option><option value="editor">Editor</option><option value="teknisi">Teknisi</option>
+              <option value="admin">Admin</option><option value="administrator">Administrator</option><option value="cs">CS</option><option value="marketing">Marketing</option><option value="editor">Editor</option><option value="teknisi">Teknisi</option>
             </select>
           </div>
           <div className="form-group"><label>Status</label>
