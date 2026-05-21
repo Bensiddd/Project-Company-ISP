@@ -6,7 +6,29 @@ import { mikrotikAPI } from '../../services/api';
 import './MikrotikMonitor.css';
 
 const RANGES = ['3m', '30m', '1h', '1d', '1w', '1m'];
-const POLL_INTERVAL = 60000;
+const HISTORY_POLL_MS = 60000;   // history refresh (matches backend cron interval)
+const LIVE_POLL_MS = 10000;      // live current-traffic refresh (just the stat card + chart edge)
+
+// Window length per range (in seconds) — used to lock the chart's X-axis domain to [now-window, now]
+// so that the axis is always visually consistent with which range button is active, even if data
+// is sparse or just starting to accumulate.
+const RANGE_SECONDS = {
+  '3m':  180,
+  '30m': 1800,
+  '1h':  3600,
+  '1d':  86400,
+  '1w':  604800,
+  '1m':  2592000
+};
+
+const RANGE_LABEL = {
+  '3m':  '3 menit',
+  '30m': '30 menit',
+  '1h':  '1 jam',
+  '1d':  '1 hari',
+  '1w':  '1 minggu',
+  '1m':  '1 bulan'
+};
 
 function formatBits(bps) {
   if (!bps || bps === 0) return '0 Mbps';
@@ -14,12 +36,32 @@ function formatBits(bps) {
   return mbps.toFixed(mbps < 10 ? 2 : 1) + ' Mbps';
 }
 
-function formatChartTime(ts, range) {
-  const d = new Date(ts);
-  if (['1d', '1w', '1m'].includes(range)) {
-    return d.toLocaleDateString('id-ID', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+// Tick label per range — kept short so axis isn't crowded:
+//   3m / 30m   →  HH:MM:SS  (seconds matter)
+//   1h          →  HH:MM
+//   1d          →  HH:MM
+//   1w / 1m    →  DD MMM
+function formatChartTime(ms, range) {
+  const d = new Date(ms);
+  if (range === '1w' || range === '1m') {
+    return d.toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
+  }
+  if (range === '1d' || range === '1h') {
+    return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
   }
   return d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+// Tooltip uses full date+time always (less ambiguous when hovering).
+function formatTooltipTime(ms) {
+  return new Date(ms).toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
+function formatAbsoluteTime(isoOrMs) {
+  if (!isoOrMs) return '—';
+  const d = (typeof isoOrMs === 'string') ? new Date(isoOrMs) : new Date(isoOrMs);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleString('id-ID', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
 const MikrotikMonitor = () => {
@@ -32,16 +74,15 @@ const MikrotikMonitor = () => {
   const [logsError, setLogsError] = useState(null);
   const [pppoe, setPppoe] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [trafficLoading, setTrafficLoading] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [trafficError, setTrafficError] = useState(null);
   const [pppoePage, setPppoePage] = useState(1);
   const [showSettings, setShowSettings] = useState(false);
   const [settings, setSettings] = useState({ host: '', username: '', password: '', passwordMask: '', port: 8728 });
   const [saving, setSaving] = useState(false);
+  const [liveCurrent, setLiveCurrent] = useState({ rx: 0, tx: 0, ts: null });
   const PER_PAGE = 10;
-  const liveRef = useRef({ rx: 0, tx: 0 });
-  const saveSampleRef = useRef(async () => {});
+  const livePollRef = useRef(async () => {});
 
   const fetchStatus = useCallback(async () => {
     try {
@@ -92,33 +133,35 @@ const MikrotikMonitor = () => {
     }
   }, [selectedIface, timeRange]);
 
-  // Save live sample ref — always points to latest selectedIface
+  // Live polling (10s) — updates the Current Traffic stat + chart edge marker.
+  // Backend cron handles persistence to traffic_history, so no save call here.
   useEffect(() => {
-    saveSampleRef.current = async () => {
+    livePollRef.current = async () => {
       if (!selectedIface) return;
-      setTrafficError(null);
-      setTrafficLoading(true);
       try {
         const { data } = await mikrotikAPI.getTraffic(selectedIface);
         if (data?.rx !== undefined) {
-          liveRef.current = { rx: data.rx, tx: data.tx };
-          mikrotikAPI.saveTraffic(selectedIface, data.rx, data.tx).catch(() => {});
+          setLiveCurrent({ rx: data.rx, tx: data.tx, ts: Date.now() });
+          setTrafficError(null);
         }
       } catch (e) {
         setTrafficError(e.response?.data?.error || e.message || 'Request failed');
-      } finally { setTrafficLoading(false); }
+      }
     };
   }, [selectedIface]);
 
-  // Save sample interval (every 60s)
+  // Live current poller — runs every 10s while an interface is selected
   useEffect(() => {
-    if (!selectedIface) return;
-    const id = setInterval(() => saveSampleRef.current(), POLL_INTERVAL);
-    saveSampleRef.current();
+    if (!selectedIface) {
+      setLiveCurrent({ rx: 0, tx: 0, ts: null });
+      return;
+    }
+    livePollRef.current();
+    const id = setInterval(() => livePollRef.current(), LIVE_POLL_MS);
     return () => clearInterval(id);
   }, [selectedIface]);
 
-  // Fetch history when range or interface changes
+  // Fetch history immediately when range or interface changes
   useEffect(() => {
     if (!selectedIface) return;
     setTrafficHistory([]);
@@ -126,10 +169,10 @@ const MikrotikMonitor = () => {
     fetchHistory();
   }, [selectedIface, timeRange, fetchHistory]);
 
-  // Periodically refresh history (every 60s)
+  // Periodically refresh history (every 60s, matches backend cron cadence)
   useEffect(() => {
     if (!selectedIface) return;
-    const id = setInterval(fetchHistory, POLL_INTERVAL);
+    const id = setInterval(fetchHistory, HISTORY_POLL_MS);
     return () => clearInterval(id);
   }, [selectedIface, timeRange, fetchHistory]);
 
@@ -140,6 +183,14 @@ const MikrotikMonitor = () => {
   }, [fetchStatus, fetchInterfaces, fetchLogs, fetchPppoe, fetchSettings]);
 
   useEffect(() => { reloadAll(); }, []);
+
+  // Auto-select the first running interface so the chart works out of the box
+  useEffect(() => {
+    if (!selectedIface && interfaces.length > 0) {
+      const running = interfaces.find(i => i.running) || interfaces[0];
+      if (running) setSelectedIface(running.name);
+    }
+  }, [interfaces, selectedIface]);
 
   // Auto-refresh logs every 30s
   useEffect(() => {
@@ -162,12 +213,51 @@ const MikrotikMonitor = () => {
     finally { setSaving(false); }
   };
 
-  const currentRx = liveRef.current.rx;
-  const currentTx = liveRef.current.tx;
-  const peakRx = trafficHistory.length > 0 ? Math.max(...trafficHistory.map(t => t.rx)) : 0;
-  const peakTx = trafficHistory.length > 0 ? Math.max(...trafficHistory.map(t => t.tx)) : 0;
-  const lowestRx = trafficHistory.length > 0 ? Math.min(...trafficHistory.map(t => t.rx)) : 0;
-  const lowestTx = trafficHistory.length > 0 ? Math.min(...trafficHistory.map(t => t.tx)) : 0;
+  const currentRx = liveCurrent.rx;
+  const currentTx = liveCurrent.tx;
+
+  // Build chart data: history buckets + live edge point (when newer than last bucket).
+  // Every point MUST carry `ms` because the X-axis is type="number" scale="time".
+  const chartData = (() => {
+    if (trafficHistory.length === 0 && liveCurrent.ts) {
+      const t = Math.floor(liveCurrent.ts / 1000);
+      return [{ time: t, ms: liveCurrent.ts, iso: new Date(liveCurrent.ts).toISOString(), rx: currentRx, tx: currentTx }];
+    }
+    if (trafficHistory.length > 0 && liveCurrent.ts) {
+      const lastBucket = trafficHistory[trafficHistory.length - 1];
+      const liveSec = Math.floor(liveCurrent.ts / 1000);
+      if (liveSec > Number(lastBucket.time)) {
+        return [
+          ...trafficHistory,
+          { time: liveSec, ms: liveCurrent.ts, iso: new Date(liveCurrent.ts).toISOString(), rx: currentRx, tx: currentTx, live: true }
+        ];
+      }
+    }
+    return trafficHistory;
+  })();
+
+  // X-axis domain locked to the selected range button: [now - window, now]. This keeps the chart
+  // visually consistent with the active range, even if data is sparse or just starting to accumulate.
+  // We anchor `now` to the latest refresh (lastUpdate || liveCurrent.ts || Date.now()) so the axis
+  // doesn't jitter on every render.
+  const nowAnchor = (lastUpdate?.getTime?.() || liveCurrent.ts || Date.now());
+  const rangeMs = RANGE_SECONDS[timeRange] * 1000;
+  const xAxisDomain = [nowAnchor - rangeMs, nowAnchor];
+
+  // Generate ~6 evenly spaced ticks across the range so labels never overcrowd.
+  const xAxisTicks = (() => {
+    const N = 6;
+    const step = rangeMs / (N - 1);
+    const ticks = [];
+    for (let i = 0; i < N; i++) ticks.push(Math.round(xAxisDomain[0] + step * i));
+    return ticks;
+  })();
+
+  const stats = chartData.length > 0 ? chartData : [];
+  const peakRx = stats.length > 0 ? Math.max(...stats.map(t => t.rx)) : 0;
+  const peakTx = stats.length > 0 ? Math.max(...stats.map(t => t.tx)) : 0;
+  const lowestRx = stats.length > 0 ? Math.min(...stats.map(t => t.rx)) : 0;
+  const lowestTx = stats.length > 0 ? Math.min(...stats.map(t => t.tx)) : 0;
   const totalPppoePages = Math.ceil(pppoe.length / PER_PAGE) || 1;
   const pagedPppoe = pppoe.slice((pppoePage - 1) * PER_PAGE, pppoePage * PER_PAGE);
 
@@ -212,12 +302,12 @@ const MikrotikMonitor = () => {
           <div className="monitor-stat-sub">RX / TX · live</div>
         </div>
         <div className="monitor-stat-card" style={{ borderLeft: '3px solid #f59e0b' }}>
-          <div className="monitor-stat-label">Peak ({timeRange})</div>
+          <div className="monitor-stat-label">Peak ({RANGE_LABEL[timeRange]})</div>
           <div className="monitor-stat-value" style={{ color: '#f59e0b' }}>{formatBits(peakRx)} <span style={{ fontSize: 14, fontWeight: 400, color: 'var(--text-muted)' }}>/ {formatBits(peakTx)}</span></div>
           <div className="monitor-stat-sub">RX / TX</div>
         </div>
         <div className="monitor-stat-card" style={{ borderLeft: '3px solid #10b981' }}>
-          <div className="monitor-stat-label">Lowest ({timeRange})</div>
+          <div className="monitor-stat-label">Lowest ({RANGE_LABEL[timeRange]})</div>
           <div className="monitor-stat-value" style={{ color: '#10b981' }}>{formatBits(lowestRx)} <span style={{ fontSize: 14, fontWeight: 400, color: 'var(--text-muted)' }}>/ {formatBits(lowestTx)}</span></div>
           <div className="monitor-stat-sub">RX / TX</div>
         </div>
@@ -232,17 +322,25 @@ const MikrotikMonitor = () => {
               <option key={iface.name} value={iface.name}>{iface.name} {iface.running ? '(UP)' : '(DOWN)'}</option>
             ))}
           </select>
-          <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6 }}>
-            {trafficLoading ? <span className="monitor-status-dot connected" style={{ animation: 'pulse 1s infinite' }} /> : null}
-            Sampling every 60s
-            {lastUpdate && <span>· {lastUpdate.toLocaleTimeString()}</span>}
+          <span style={{ fontSize: 12, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            <span className="monitor-status-dot connected" style={{ animation: 'pulse 2s infinite' }} />
+            Live · {Math.floor(LIVE_POLL_MS / 1000)}s
+            {liveCurrent.ts && <span title="Waktu polling terakhir">· {formatAbsoluteTime(liveCurrent.ts)}</span>}
           </span>
         </div>
 
-        <div className="range-buttons">
+        <div className="range-buttons" role="tablist" aria-label="Rentang waktu chart">
           {RANGES.map(r => (
-            <button key={r} className={`range-btn ${timeRange === r ? 'active' : ''}`} onClick={() => setTimeRange(r)}>
-              {r}
+            <button
+              key={r}
+              type="button"
+              role="tab"
+              aria-selected={timeRange === r}
+              className={`range-btn ${timeRange === r ? 'active' : ''}`}
+              onClick={() => setTimeRange(r)}
+              title={RANGE_LABEL[r]}
+            >
+              {RANGE_LABEL[r]}
             </button>
           ))}
         </div>
@@ -252,19 +350,42 @@ const MikrotikMonitor = () => {
             <HiExclamationCircle style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />{trafficError}
           </div>
         )}
-        {selectedIface ? (
+        {selectedIface && chartData.length === 0 && !trafficError && (
+          <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)', fontSize: 13 }}>
+            <span className="monitor-status-dot connected" style={{ animation: 'pulse 1.5s infinite', display: 'inline-block', verticalAlign: 'middle', marginRight: 8 }} />
+            Mengumpulkan data untuk <code>{selectedIface}</code> pada rentang <b>{RANGE_LABEL[timeRange]}</b>... data akan muncul setelah polling pertama.
+          </div>
+        )}
+        {!selectedIface ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
+            <HiServer size={40} style={{ opacity: 0.2, marginBottom: 8 }} />
+            <p>Pilih interface untuk mulai monitoring traffic</p>
+          </div>
+        ) : chartData.length > 0 ? (
           <ResponsiveContainer width="100%" height={260}>
-            <AreaChart data={trafficHistory.length > 0 ? trafficHistory : [{ time: '—', rx: 0, tx: 0 }]} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+            <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
               <defs>
                 <linearGradient id="rxGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} /><stop offset="95%" stopColor="#6366f1" stopOpacity={0} /></linearGradient>
                 <linearGradient id="txGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.3} /><stop offset="95%" stopColor="#10b981" stopOpacity={0} /></linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-              <XAxis dataKey="time" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} tickFormatter={v => typeof v === 'number' ? formatChartTime(v * 1000, timeRange) : v} />
+              <XAxis
+                dataKey="ms"
+                type="number"
+                scale="time"
+                domain={xAxisDomain}
+                ticks={xAxisTicks}
+                tick={{ fontSize: 11, fill: '#64748b' }}
+                axisLine={false}
+                tickLine={false}
+                tickFormatter={v => formatChartTime(v, timeRange)}
+                allowDataOverflow={false}
+                minTickGap={20}
+              />
               <YAxis tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} tickFormatter={v => v ? (v / 1000000).toFixed(v > 100000000 ? 0 : 1) + 'M' : '0'} />
               <Tooltip content={(props) => {
                 if (!props.active || !props.payload?.length) return null;
-                const ts = typeof props.label === 'number' ? formatChartTime(props.label * 1000, timeRange) : props.label;
+                const ts = typeof props.label === 'number' ? formatTooltipTime(props.label) : String(props.label);
                 return (
                   <div style={{ background: '#1a1a2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, padding: '12px 16px', boxShadow: '0 8px 32px rgba(0,0,0,0.4)' }}>
                     <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 6 }}>{ts}</div>
@@ -277,16 +398,11 @@ const MikrotikMonitor = () => {
                   </div>
                 );
               }} />
-              <Area type="monotone" dataKey="rx" name="RX" stroke="#6366f1" fill="url(#rxGrad)" strokeWidth={2} dot={false} animationDuration={300} />
-              <Area type="monotone" dataKey="tx" name="TX" stroke="#10b981" fill="url(#txGrad)" strokeWidth={2} dot={false} animationDuration={300} />
+              <Area type="monotone" dataKey="rx" name="RX" stroke="#6366f1" fill="url(#rxGrad)" strokeWidth={2} dot={false} animationDuration={300} isAnimationActive={false} />
+              <Area type="monotone" dataKey="tx" name="TX" stroke="#10b981" fill="url(#txGrad)" strokeWidth={2} dot={false} animationDuration={300} isAnimationActive={false} />
             </AreaChart>
           </ResponsiveContainer>
-        ) : (
-          <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
-            <HiServer size={40} style={{ opacity: 0.2, marginBottom: 8 }} />
-            <p>Select an interface to start monitoring traffic</p>
-          </div>
-        )}
+        ) : null}
       </div>
 
       <div className="monitor-table-wrap logs">

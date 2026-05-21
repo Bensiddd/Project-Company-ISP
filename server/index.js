@@ -22,7 +22,7 @@ import telegramConversationsRoutes from './routes/telegram-conversations.js';
 import botSettingsRoutes from './routes/bot-settings.js';
 import settingsRoutes from './routes/settings.js';
 import dashboardRoutes from './routes/dashboard.js';
-import mikrotikRoutes from './routes/mikrotik.js';
+import mikrotikRoutes, { startTrafficPolling } from './routes/mikrotik.js';
 import uploadRoutes from './routes/upload.js';
 
 const app = express();
@@ -70,7 +70,8 @@ db.init().then(() => {
   console.log('Database ready');
   app.listen(PORT, () => {
     console.log(`Server running on http://localhost:${PORT}`);
-    initPolling().catch(err => console.error('Failed to start polling:', err));
+    initPolling().catch(err => console.error('Failed to start telegram polling:', err));
+    startTrafficPolling().catch(err => console.error('Failed to start traffic polling:', err));
   });
 }).catch(err => {
   console.error('Failed to initialize database:', err);
