@@ -14,40 +14,46 @@ import ContactMessages from './ContactMessages';
 import TicketManagement from './TicketManagement';
 import IncomingRequests from './IncomingRequests';
 import TelegramBots from './TelegramBots';
+import WhatsAppBots from './WhatsAppBots';
+import WhatsAppMessages from './WhatsAppMessages';
 import MikrotikMonitor from './MikrotikMonitor';
 
 const routeRoles = {
-  '/admin': ['super_admin', 'admin', 'teknisi'],
-  '/admin/requests': ['super_admin', 'admin'],
-  '/admin/users': ['super_admin'],
-  '/admin/blog': ['super_admin', 'admin', 'marketing', 'editor'],
-  '/admin/services': ['super_admin', 'marketing'],
-  '/admin/coverage': ['super_admin', 'admin', 'marketing'],
-  '/admin/clients': ['super_admin', 'admin'],
-  '/admin/tickets': ['super_admin', 'admin', 'cs', 'teknisi'],
-  '/admin/messages': ['super_admin', 'cs'],
-  '/admin/telegram-bots': ['super_admin'],
-  '/admin/settings': ['super_admin', 'admin'],
-  '/admin/network': ['super_admin']
+  '/admin': ['administrator', 'admin', 'teknisi'],
+  '/admin/requests': ['administrator', 'admin'],
+  '/admin/users': ['administrator'],
+  '/admin/blog': ['administrator', 'admin', 'marketing', 'editor'],
+  '/admin/services': ['administrator', 'marketing'],
+  '/admin/coverage': ['administrator', 'admin', 'marketing'],
+  '/admin/clients': ['administrator', 'admin'],
+  '/admin/tickets': ['administrator', 'admin', 'cs', 'teknisi'],
+  '/admin/messages': ['administrator', 'cs'],
+  '/admin/telegram-bots': ['administrator'],
+  '/admin/whatsapp-bots': ['administrator'],
+  '/admin/whatsapp-messages': ['administrator', 'cs'],
+  '/admin/settings': ['administrator', 'admin'],
+  '/admin/network': ['administrator']
 };
 
 const allNavItems = [
-  { path: '/admin', label: 'Overview', icon: HiChartBar, roles: ['super_admin'] },
-  { path: '/admin/requests', label: 'Request Masuk', icon: HiInbox, roles: ['super_admin', 'admin'] },
-  { path: '/admin/users', label: 'Admin Users', icon: HiUsers, roles: ['super_admin'] },
-  { path: '/admin/blog', label: 'Blog Posts', icon: HiPencilAlt, roles: ['super_admin', 'admin', 'marketing', 'editor'] },
-  { path: '/admin/services', label: 'Service Packages', icon: HiChip, roles: ['super_admin', 'marketing'] },
-  { path: '/admin/coverage', label: 'Coverage Areas', icon: HiGlobe, roles: ['super_admin', 'admin', 'marketing'] },
-  { path: '/admin/clients', label: 'Clients & Testimonials', icon: HiBriefcase, roles: ['super_admin', 'admin'] },
-  { path: '/admin/tickets', label: 'Ticketing', icon: HiClipboardList, roles: ['super_admin', 'admin', 'cs', 'teknisi'] },
-  { path: '/admin/messages', label: 'Contact Messages', icon: HiMail, roles: ['super_admin', 'cs'] },
-  { path: '/admin/telegram-bots', label: 'Telegram Bots', icon: HiChatAlt2, roles: ['super_admin'] },
-  { path: '/admin/settings', label: 'Website Settings', icon: HiCog, roles: ['super_admin', 'admin'] },
-  { path: '/admin/network', label: 'Network Monitor', icon: HiServer, roles: ['super_admin'] }
+  { path: '/admin', label: 'Overview', icon: HiChartBar, roles: ['administrator'] },
+  { path: '/admin/requests', label: 'Request Masuk', icon: HiInbox, roles: ['administrator', 'admin'] },
+  { path: '/admin/users', label: 'Admin Users', icon: HiUsers, roles: ['administrator'] },
+  { path: '/admin/blog', label: 'Blog Posts', icon: HiPencilAlt, roles: ['administrator', 'admin', 'marketing', 'editor'] },
+  { path: '/admin/services', label: 'Service Packages', icon: HiChip, roles: ['administrator', 'marketing'] },
+  { path: '/admin/coverage', label: 'Coverage Areas', icon: HiGlobe, roles: ['administrator', 'admin', 'marketing'] },
+  { path: '/admin/clients', label: 'Clients & Testimonials', icon: HiBriefcase, roles: ['administrator', 'admin'] },
+  { path: '/admin/tickets', label: 'Ticketing', icon: HiClipboardList, roles: ['administrator', 'admin', 'cs', 'teknisi'] },
+  { path: '/admin/messages', label: 'Contact Messages', icon: HiMail, roles: ['administrator', 'cs'] },
+  { path: '/admin/telegram-bots', label: 'Telegram Bots', icon: HiChatAlt2, roles: ['administrator'] },
+  { path: '/admin/whatsapp-bots', label: 'WhatsApp Bots', icon: HiChatAlt2, roles: ['administrator'] },
+  { path: '/admin/whatsapp-messages', label: 'WhatsApp Messages', icon: HiMail, roles: ['administrator', 'cs'] },
+  { path: '/admin/settings', label: 'Website Settings', icon: HiCog, roles: ['administrator', 'admin'] },
+  { path: '/admin/network', label: 'Network Monitor', icon: HiServer, roles: ['administrator'] }
 ];
 
 const roleConfig = {
-  super_admin: { label: 'Super Admin', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
+  administrator: { label: 'Super Admin', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
   admin: { label: 'Admin', color: '#6366f1', bg: 'rgba(99,102,241,0.15)' },
   editor: { label: 'Editor', color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
   teknisi: { label: 'Teknisi', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' },
@@ -61,7 +67,8 @@ const AdminDashboard = () => {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  const currentUser = JSON.parse(localStorage.getItem('admin_user') || '{}');
+  let currentUser = {};
+  try { currentUser = JSON.parse(localStorage.getItem('admin_user') || '{}'); } catch {}
   const userRole = currentUser.role || 'admin';
   const userName = currentUser.full_name || currentUser.username || currentUser.email || 'Admin';
   const userInitial = userName.charAt(0).toUpperCase();
@@ -190,6 +197,8 @@ const AdminDashboard = () => {
             <Route path="tickets" element={<TicketManagement />} />
             <Route path="requests" element={<IncomingRequests />} />
             <Route path="telegram-bots" element={<TelegramBots />} />
+            <Route path="whatsapp-bots" element={<WhatsAppBots />} />
+            <Route path="whatsapp-messages" element={<WhatsAppMessages />} />
             <Route path="network" element={<MikrotikMonitor />} />
           </Routes>
         </main>

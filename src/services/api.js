@@ -179,4 +179,34 @@ export const mikrotikAPI = {
   getTrafficHistory: (iface, range) => api.get(`/mikrotik/traffic/history/${encodeURIComponent(iface)}?range=${range}`)
 };
 
+// WhatsApp Bots endpoints
+export const whatsappBotsAPI = {
+  getAll: () => api.get('/whatsapp-bots'),
+  getById: (id) => api.get(`/whatsapp-bots/${id}`),
+  create: (botData) => api.post('/whatsapp-bots', botData),
+  update: (id, botData) => api.put(`/whatsapp-bots/${id}`, botData),
+  delete: (id) => api.delete(`/whatsapp-bots/${id}`)
+};
+
+// WhatsApp actions endpoints
+export const whatsappAPI = {
+  connect: (bot_id) => api.post('/whatsapp/connect', { bot_id }),
+  disconnect: (bot_id) => api.post('/whatsapp/disconnect', { bot_id }),
+  getStatus: (id) => api.get(`/whatsapp/bots/${id}/status`),
+  getQR: (id) => api.get(`/whatsapp/bots/${id}/qr`),
+  test: (bot_id, chat_id, message) => api.post('/whatsapp/test', { bot_id, chat_id, message }),
+  setWebhook: (bot_id, webhook_url) => api.post('/whatsapp/set-webhook', { bot_id, webhook_url }),
+  checkAI: (bot_id) => api.post('/whatsapp/check-ai', { bot_id }),
+  checkAIWithValues: (bot_id, overrides) => api.post('/whatsapp/check-ai', { bot_id, ...overrides })
+};
+
+// WhatsApp Conversations endpoints
+export const whatsappConversationsAPI = {
+  getAll: () => api.get('/whatsapp-conversations'),
+  getMessages: (id) => api.get(`/whatsapp-conversations/${id}/messages`),
+  reply: (id, message) => api.post(`/whatsapp-conversations/${id}/reply`, { message }),
+  toggle: (id) => api.post(`/whatsapp-conversations/${id}/toggle`),
+  delete: (id) => api.delete(`/whatsapp-conversations/${id}`)
+};
+
 export default api;

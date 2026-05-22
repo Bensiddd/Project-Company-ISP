@@ -31,8 +31,9 @@ const AdminUsers = () => {
     { key: 'username', label: 'Username', render: item => <div><span className="fw-600">{item.username}</span><div className="text-muted small">{item.full_name}</div></div> },
     { key: 'email', label: 'Email' },
     { key: 'role', label: 'Role', render: item => {
-      const colors = { super_admin: 'var(--primary)', admin: 'var(--success)', editor: 'var(--warning)', teknisi: '#f59e0b', cs: '#8b5cf6', marketing: '#06b6d4' };
-      return <span className="badge" style={{ background: `${colors[item.role] || '#666'}20`, color: colors[item.role] || '#666' }}>{item.role.replace('_', ' ')}</span>;
+      const colors = { administrator: '#ef4444', admin: '#10b981', editor: '#f59e0b', teknisi: '#f59e0b', cs: '#8b5cf6', marketing: '#06b6d4' };
+      const roleColor = colors[item.role] || '#666';
+      return <span className="badge" style={{ background: `${roleColor}20`, color: roleColor, border: `1px solid ${roleColor}40` }}>{item.role.replace('_', ' ')}</span>;
     }},
     { key: 'is_active', label: 'Status', render: item => <span className={`status-pill ${item.is_active ? 'active' : 'inactive'}`}>{item.is_active ? 'Active' : 'Inactive'}</span> },
     { key: 'last_login', label: 'Last Login', render: item => item.last_login ? new Date(item.last_login).toLocaleDateString() : '—' }

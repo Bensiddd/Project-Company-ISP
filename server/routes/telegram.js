@@ -6,6 +6,7 @@ import db from '../db.js';
 import { authenticate } from '../middleware/auth.js';
 import { callAI } from '../services/ai-providers.js';
 import { decrypt } from '../utils/encryption.js';
+import { syncChatToContactMessage } from '../services/sync-contact-message.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const UPLOADS_DIR = resolve(__dirname, '../../uploads/identity');
@@ -166,6 +167,7 @@ async function processAI(bot, chatId, userText, userName) {
   try {
     const convo = await getOrCreateConversation(bot.id, String(chatId), userName);
     await saveMessage(bot.id, String(chatId), 'user', userText, convo.id);
+    await syncChatToContactMessage('telegram', bot.id, String(chatId), userName, userText);
 
     if (await isCooldownBlocked(convo) && convo.status !== 'human' && !['/start', '/stop', 'menu', 'batal'].includes(userText.toLowerCase())) {
       const remaining = formatCooldownRemaining(convo);

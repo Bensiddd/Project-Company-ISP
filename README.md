@@ -1,12 +1,13 @@
-# MAZNET — ISP Landing Page + Dashboard Admin + Telegram Bot
+# MAZNET — ISP Landing Page + Dashboard Admin + Telegram & WhatsApp Bot
 
-Sistem manajemen **ISP** full-stack dengan landing page publik, dashboard admin multi-role, integrasi multi-bot Telegram dengan AI webhook, monitoring jaringan Mikrotik, dan ticketing system.
+Sistem manajemen **ISP** full-stack dengan landing page publik, dashboard admin multi-role, integrasi multi-bot Telegram & WhatsApp dengan AI webhook, monitoring jaringan Mikrotik, dan ticketing system.
 
 ## Tech Stack
 
 - **Frontend**: React 18 + Vite 4 + Framer Motion + React Router 6 + Axios + Recharts
 - **Backend**: Express.js + mysql2 (MySQL 8 via Docker)
 - **Bot Telegram**: native `fetch` (Node 18+), long polling (3s) + webhook
+- **Bot WhatsApp**: Baileys (dev) + WhatsApp Business API (prod) — switch-able provider
 - **AI**: Multi-provider (OpenAI, Gemini, Claude, OpenRouter, Custom API) — toggle per bot, template default
 - **Mikrotik**: node-routeros (RouterOS API)
 - **Database**: MySQL 8 (Docker)
@@ -29,8 +30,10 @@ src/
 │       ├── AdminOverview.jsx       # Statistik dashboard + activity log feed
 │       ├── AdminUsers.jsx          # CRUD admin, support 6 role
 │       ├── TelegramBots.jsx        # Multi-bot: CRUD, role, AI config, Set Webhook, Check AI, Polling
+│       ├── WhatsAppBots.jsx        # Multi-bot WhatsApp: CRUD, QR scan (Baileys), Business API config
 │       ├── ContactMessages.jsx     # Telegram chat bubble UI, reply, AI/human toggle, countdown modal
-│       ├── TicketManagement.jsx    # Card grid, assign admin, inline reply, role filter, confirm dialog
+│       ├── WhatsAppMessages.jsx    # WhatsApp chat bubble UI, reply, AI/human toggle
+│       ├── TicketManagement.jsx    # Card grid, assign admin, inline reply, role filter, source badge (Telegram/WhatsApp)
 │       ├── IncomingRequests.jsx    # Request dari form contact → proses jadi ticket
 │       ├── MikrotikMonitor.jsx     # Network monitor: traffic chart (Recharts), logs, PPPoE
 │       ├── ServicePackages.jsx     # 3 paket ISP: Starter Rp160rb, Professional Rp400rb, Enterprise
@@ -125,6 +128,27 @@ server/
 - Percakapan Telegram dengan chat bubble UI (auto-refresh 3 detik)
 - Balas langsung dari dashboard → terkirim ke user via Telegram API
 - Toggle AI ↔ Human per percakapan dengan konfirmasi countdown
+
+### 📱 Multi-Bot WhatsApp (NEW!)
+- **Provider Pattern** — mudah switch dari Baileys (dev) ke Business API (prod)
+- **Baileys** (Development): QR code scan, untuk testing
+- **Business API** (Production): Meta Cloud API, Twilio, 360dialog — scalable & official
+- Tambah multiple bot dengan phone number / Phone Number ID
+- 3 role per bot: admin, customer_service (AI/CS), teknisi
+- **AI toggle per bot** — sama seperti Telegram, support semua AI provider
+- **State machine 5 state** — sama seperti Telegram (ticket, upgrade, instalasi, CS, idle)
+- **Cooldown 6 jam** — auto-clear jika ticket closed/deleted
+- Semua pesan tersimpan di database + unread counter
+- Chat bubble UI di dashboard untuk reply manual
+- Toggle AI ↔ Human per percakapan
+- **Ticket source tracking** — badge Telegram/WhatsApp di ticket card
+
+### 💬 WhatsApp Messages (Dashboard)
+- Percakapan WhatsApp dengan chat bubble UI (auto-refresh 3 detik)
+- Balas langsung dari dashboard → terkirim ke user via WhatsApp
+- Toggle AI ↔ Human per percakapan
+- Bot status indicator (connected/disconnected/qr)
+- Support Baileys QR code display untuk scan
 - Bot status (online/offline) per bot
 - Smart auto-scroll hanya jika di dekat bottom
 - Hapus sesi + semua pesan
@@ -181,7 +205,7 @@ server/
 | MySQL | `127.0.0.1:3306` | root / root |
 | phpMyAdmin | `http://127.0.0.1:8080` | root / root |
 
-16 tabel:
+19 tabel:
 
 | Tabel | Fungsi |
 |---|---|
@@ -197,6 +221,9 @@ server/
 | `telegram_bots` | Multi-bot config (token, role, ai_enabled toggle, AI provider/key/model/URL) |
 | `telegram_conversations` | Percakapan per user (state machine, pending_data, cooldown_until, unread) |
 | `telegram_messages` | Riwayat pesan (user/bot) |
+| `whatsapp_bots` | Multi-bot WhatsApp (phone_number, provider: baileys/business-api, ai_enabled, API keys encrypted) |
+| `whatsapp_conversations` | Percakapan WhatsApp per user (state machine, pending_data, cooldown_until, unread) |
+| `whatsapp_messages` | Riwayat pesan WhatsApp (user/bot) |
 | `website_settings` | Pengaturan website (company, contact, social media) |
 | `mikrotik_settings` | Konfigurasi koneksi RouterOS (host, user, password terenkripsi AES-256-GCM) |
 | `traffic_history` | Riwayat traffic per interface (RX/TX per sample) |
@@ -250,12 +277,16 @@ Frontend di-*serve* dari Express sebagai static files.
 ## Catatan Penting
 
 - **Docker port bind**: Semua port Docker bind ke `127.0.0.1` (loopback) — tidak bisa diakses dari luar (kecuali port-forwarding)
-- **Restart backend** → polling otomatis untuk semua bot `customer_service` aktif (interval 3 detik)
+- **Restart backend** → polling otomatis untuk semua bot Telegram `customer_service` aktif (interval 3 detik) + initialize semua WhatsApp bots aktif
+- **WhatsApp Provider**: Baileys untuk development (QR scan), Business API untuk production (Meta/Twilio/360dialog)
+- **WhatsApp Baileys**: Session tersimpan di `server/data/whatsapp-sessions/bot-{id}/`. Jangan hapus folder ini saat bot connected
+- **WhatsApp Business API**: Perlu setup webhook di provider console. Webhook URL: `https://yourdomain.com/api/whatsapp/webhook/{bot_id}`
 - **AI template default**: Bot baru `ai_enabled=0` — hanya balas dengan template "Ada yang bisa saya bantu?" + MAIN_MENU. Aktifkan AI via toggle di dashboard
-- **Cooldown 6 jam**: Setelah membuat ticket/install/upgrade via Telegram. Auto-clear jika ticket dihapus atau status closed
+- **Cooldown 6 jam**: Setelah membuat ticket/install/upgrade via Telegram/WhatsApp. Auto-clear jika ticket dihapus atau status closed
 - **Cooldown bypass**: `talk_to_cs`, `end_session`, `back_to_menu`, `/start`, `/stop`, menu, batal — tidak kena cooldown
-- **Enkripsi rahasia**: `ai_api_key` (telegram_bots) dan `password` (mikrotik_settings) dienkripsi AES-256-GCM dengan `ENCRYPTION_KEY` dari `.env`. Format ciphertext: `enc:<base64-iv>:<base64-tag>:<base64-ct>`. API response menampilkan masked `••••<last4>` saja — raw value tidak pernah dikirim ke frontend
+- **Enkripsi rahasia**: `ai_api_key` (telegram_bots, whatsapp_bots), `api_key` (whatsapp_bots), dan `password` (mikrotik_settings) dienkripsi AES-256-GCM dengan `ENCRYPTION_KEY` dari `.env`. Format ciphertext: `enc:<base64-iv>:<base64-tag>:<base64-ct>`. API response menampilkan masked `••••<last4>` saja — raw value tidak pernah dikirim ke frontend
 - **Bot hanya bisa kirim pesan** ke user yang pernah chat bot sebelumnya
+- **Ticket source tracking**: Setiap ticket dari Telegram/WhatsApp akan punya badge source di dashboard
 - **`admin123`** adalah password default untuk semua seed admin users
 - **Dark theme**: `#0a0a0f` base, Plus Jakarta Sans font, glassmorphism
 - **Vite proxy**: `/api` dan `/uploads` di-proxy ke `http://localhost:3001`

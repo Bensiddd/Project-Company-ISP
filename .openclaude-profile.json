@@ -1,0 +1,10 @@
+{
+  "profile": "openai",
+  "env": {
+    "OPENAI_BASE_URL": "http://localhost:20128/v1",
+    "OPENAI_MODEL": "freemodel/claude-opus-4-7",
+    "OPENAI_API_FORMAT": "responses",
+    "OPENAI_API_KEY": "sk-e6f11dd6027054fc-s56d3t-23b23656"
+  },
+  "createdAt": "2026-05-22T11:25:37.575Z"
+}

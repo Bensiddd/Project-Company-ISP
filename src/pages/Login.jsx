@@ -5,7 +5,7 @@ import { HiEye, HiEyeOff, HiGlobe } from 'react-icons/hi';
 import { authAPI } from '../services/api';
 
 const roleFirstRoute = {
-  super_admin: '/admin',
+  administrator: '/admin',
   admin: '/admin',
   teknisi: '/admin',
   cs: '/admin/tickets',

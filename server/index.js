@@ -24,6 +24,9 @@ import settingsRoutes from './routes/settings.js';
 import dashboardRoutes from './routes/dashboard.js';
 import mikrotikRoutes from './routes/mikrotik.js';
 import uploadRoutes from './routes/upload.js';
+import whatsappRoutes from './routes/whatsapp.js';
+import whatsappBotsRoutes from './routes/whatsapp-bots.js';
+import whatsappConversationsRoutes from './routes/whatsapp-conversations.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -48,6 +51,9 @@ app.use('/api/website-settings', settingsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/mikrotik', mikrotikRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/whatsapp', whatsappRoutes);
+app.use('/api/whatsapp-bots', whatsappBotsRoutes);
+app.use('/api/whatsapp-conversations', whatsappConversationsRoutes);
 
 // ── Global error handlers ──────────────────────────────────────────────
 process.on('unhandledRejection', (reason, promise) => {
@@ -66,11 +72,15 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-db.init().then(() => {
+db.init().then(async () => {
   console.log('Database ready');
-  app.listen(PORT, () => {
+  app.listen(PORT, async () => {
     console.log(`Server running on http://localhost:${PORT}`);
     initPolling().catch(err => console.error('Failed to start polling:', err));
+    
+    // Initialize WhatsApp bots
+    const { initializeWhatsAppBots } = await import('./services/whatsapp/provider-factory.js');
+    initializeWhatsAppBots(db).catch(err => console.error('Failed to initialize WhatsApp bots:', err));
   });
 }).catch(err => {
   console.error('Failed to initialize database:', err);

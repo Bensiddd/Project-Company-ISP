@@ -20,6 +20,7 @@
     "@tiptap/extension-underline": "^3.23.5",
     "@tiptap/react": "^3.23.5",
     "@tiptap/starter-kit": "^3.23.5",
+    "9router": "^0.4.59",
     "axios": "^1.6.0",
     "framer-motion": "^12.38.0",
     "react": "^18.2.0",
@@ -36,6 +37,6 @@
     "eslint-plugin-react": "^7.32.2",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.3",
-    "vite": "^4.4.5"
+    "vite": "^8.0.14"
   }
 }

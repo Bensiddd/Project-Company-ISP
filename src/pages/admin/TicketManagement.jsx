@@ -156,6 +156,18 @@ const TicketManagement = () => {
               <span className="ticket-type-badge" style={{ background: typeColors[t.type] + '22', color: typeColors[t.type] }}>{typeLabels[t.type]}</span>
               <span className="ticket-priority-badge" style={{ background: priorityColors[t.priority] + '22', color: priorityColors[t.priority] }}>{priorityLabels[t.priority]}</span>
               <span className={`ticket-status-badge ${t.status}`}>{statusLabels[t.status]}</span>
+              {t.source && t.source !== 'manual' && (
+                <span className="ticket-source-badge" style={{ 
+                  background: t.source === 'telegram' ? '#0088cc22' : '#25D36622', 
+                  color: t.source === 'telegram' ? '#0088cc' : '#25D366',
+                  fontSize: 11,
+                  padding: '4px 8px',
+                  borderRadius: 4,
+                  fontWeight: 600
+                }}>
+                  {t.source === 'telegram' ? '✈️ Telegram' : '📱 WhatsApp'}
+                </span>
+              )}
             </div>
             <h3 className="ticket-card-title" onClick={() => handleExpand(t.id)}>{t.title}</h3>
             <div className="ticket-card-meta">
@@ -165,33 +177,35 @@ const TicketManagement = () => {
             </div>
             {t.assigned_name && <div className="ticket-card-assignee">Assigned to: {t.assigned_name}</div>}
 
-            {expanded === t.id && (() => {
-              const { fields, keluhan } = parseTicketDescription(t.description);
-              return (
-                <motion.div className="ticket-expanded" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
-                  {fields.length > 0 && (
-                    <div className="ticket-info-grid">
-                      {fields.map((f, fi) => {
-                        const Icon = INFO_ICONS[f.key] || HiUser;
-                        return (
-                          <div key={fi} className="ticket-info-item">
-                            <span className="ticket-info-label"><Icon /> {f.label}</span>
-                            <span className="ticket-info-value">{/^https?:\/\//.test(f.value) ? <a href={f.value} target="_blank" rel="noopener noreferrer">{f.value}</a> : f.value}</span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {keluhan && (
-                    <div className="ticket-keluhan">
-                      <div className="ticket-keluhan-header">📋 Keluhan</div>
-                      <div className="ticket-keluhan-text">{keluhan}</div>
-                    </div>
-                  )}
-                  {!fields.length && !keluhan && t.description && <div className="ticket-desc">{t.description}</div>}
-                </motion.div>
-              );
-            })()}
+            <AnimatePresence>
+              {expanded === t.id && (() => {
+                const { fields, keluhan } = parseTicketDescription(t.description);
+                return (
+                  <motion.div key={t.id} className="ticket-expanded" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
+                    {fields.length > 0 && (
+                      <div className="ticket-info-grid">
+                        {fields.map((f, fi) => {
+                          const Icon = INFO_ICONS[f.key] || HiUser;
+                          return (
+                            <div key={fi} className="ticket-info-item">
+                              <span className="ticket-info-label"><Icon /> {f.label}</span>
+                              <span className="ticket-info-value">{f.value.split(/(https?:\/\/[^\s]+)/).map((part, i) => i % 2 === 1 ? <a key={i} href={part} target="_blank" rel="noopener noreferrer">{part}</a> : part)}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    {keluhan && (
+                      <div className="ticket-keluhan">
+                        <div className="ticket-keluhan-header">📋 Keluhan</div>
+                        <div className="ticket-keluhan-text">{keluhan.split(/(https?:\/\/[^\s]+)/).map((part, i) => i % 2 === 1 ? <a key={i} href={part} target="_blank" rel="noopener noreferrer">{part}</a> : part)}</div>
+                      </div>
+                    )}
+                    {!fields.length && !keluhan && t.description && <div className="ticket-desc">{t.description.split(/(https?:\/\/[^\s]+)/).map((part, i) => i % 2 === 1 ? <a key={i} href={part} target="_blank" rel="noopener noreferrer">{part}</a> : part)}</div>}
+                  </motion.div>
+                );
+              })()}
+            </AnimatePresence>
 
             <div className="ticket-card-actions">
               {!isTeknisi && t.status !== 'closed' && (

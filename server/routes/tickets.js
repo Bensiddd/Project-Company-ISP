@@ -50,8 +50,8 @@ router.put('/:id', authenticate, async (req, res) => {
 });
 
 router.delete('/', authenticate, async (req, res) => {
-  if (!['super_admin', 'admin'].includes(req.user.role)) {
-    return res.status(403).json({ message: 'Forbidden: only super_admin and admin can delete all tickets' });
+  if (!['administrator', 'admin'].includes(req.user.role)) {
+    return res.status(403).json({ message: 'Forbidden: only administrator and admin can delete all tickets' });
   }
   const tickets = await db.all('SELECT id, title FROM tickets');
   for (const t of tickets) {

@@ -18,7 +18,10 @@ const sqls = [
   `CREATE TABLE IF NOT EXISTS telegram_messages (id INT AUTO_INCREMENT PRIMARY KEY, conversation_id INT, bot_id INT, chat_id TEXT NOT NULL, role TEXT NOT NULL, message TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB`,
   `CREATE TABLE IF NOT EXISTS mikrotik_settings (id INT AUTO_INCREMENT PRIMARY KEY, host VARCHAR(100) NOT NULL DEFAULT '', username VARCHAR(100) NOT NULL DEFAULT '', password VARCHAR(500) NOT NULL DEFAULT '', port INT DEFAULT 8728, is_active TINYINT(1) DEFAULT 0, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB`,
   `CREATE TABLE IF NOT EXISTS traffic_history (id INT AUTO_INCREMENT PRIMARY KEY, interface VARCHAR(100) NOT NULL, rx BIGINT DEFAULT 0, tx BIGINT DEFAULT 0, sampled_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB`,
-  `CREATE TABLE IF NOT EXISTS activity_logs (id INT AUTO_INCREMENT PRIMARY KEY, type VARCHAR(50) NOT NULL, action VARCHAR(200) NOT NULL, detail TEXT, user_id INT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB`
+  `CREATE TABLE IF NOT EXISTS activity_logs (id INT AUTO_INCREMENT PRIMARY KEY, type VARCHAR(50) NOT NULL, action VARCHAR(200) NOT NULL, detail TEXT, user_id INT, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS whatsapp_bots (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(100) NOT NULL, phone_number VARCHAR(20) NOT NULL, provider VARCHAR(20) DEFAULT 'baileys', is_active TINYINT(1) DEFAULT 1, role VARCHAR(20) DEFAULT 'customer_service', ai_enabled TINYINT(1) DEFAULT 0, ai_provider VARCHAR(50), ai_model VARCHAR(100), ai_api_key VARCHAR(1024), ai_url VARCHAR(255), system_prompt TEXT, session_data TEXT, qr_code TEXT, status VARCHAR(20) DEFAULT 'disconnected', webhook_url VARCHAR(255), api_key VARCHAR(255), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS whatsapp_conversations (id INT AUTO_INCREMENT PRIMARY KEY, bot_id INT, chat_id VARCHAR(100) NOT NULL, user_name TEXT, last_message TEXT, status VARCHAR(20) DEFAULT 'ai', unread INT DEFAULT 0, user_phone TEXT, state VARCHAR(50) DEFAULT 'idle', pending_data TEXT, cooldown_until TIMESTAMP NULL DEFAULT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE INDEX idx_whatsapp_convs_unique (bot_id, chat_id)) ENGINE=InnoDB`,
+  `CREATE TABLE IF NOT EXISTS whatsapp_messages (id INT AUTO_INCREMENT PRIMARY KEY, conversation_id INT, bot_id INT, chat_id VARCHAR(100) NOT NULL, role TEXT NOT NULL, message TEXT NOT NULL, created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB`
 ];
 
 await db.init();
@@ -51,6 +54,20 @@ try {
 // Add telegram_conversation_id column to tickets if not exists
 try {
   await db.run('ALTER TABLE tickets ADD COLUMN telegram_conversation_id INT NULL AFTER contact_message_id');
+} catch (e) {
+  if (!e.message.includes('Duplicate column')) console.error('Migration note:', e.message);
+}
+
+// Add whatsapp_conversation_id column to tickets if not exists
+try {
+  await db.run('ALTER TABLE tickets ADD COLUMN whatsapp_conversation_id INT NULL AFTER telegram_conversation_id');
+} catch (e) {
+  if (!e.message.includes('Duplicate column')) console.error('Migration note:', e.message);
+}
+
+// Add source column to tickets (telegram/whatsapp)
+try {
+  await db.run("ALTER TABLE tickets ADD COLUMN source VARCHAR(20) DEFAULT 'manual' AFTER whatsapp_conversation_id");
 } catch (e) {
   if (!e.message.includes('Duplicate column')) console.error('Migration note:', e.message);
 }
@@ -113,6 +130,36 @@ if (process.env.ENCRYPTION_KEY) {
     if (migrated > 0) console.log(`Encrypted ${migrated} password(s) in mikrotik_settings.`);
   } catch (e) {
     console.error('Mikrotik password encryption migration:', e.message);
+  }
+
+  // Encrypt existing plaintext ai_api_key values in whatsapp_bots
+  try {
+    const bots = await db.all('SELECT id, ai_api_key FROM whatsapp_bots WHERE ai_api_key IS NOT NULL AND ai_api_key != ""');
+    let migrated = 0;
+    for (const bot of bots) {
+      if (!isEncrypted(bot.ai_api_key)) {
+        await db.run('UPDATE whatsapp_bots SET ai_api_key=? WHERE id=?', [encrypt(bot.ai_api_key), bot.id]);
+        migrated++;
+      }
+    }
+    if (migrated > 0) console.log(`Encrypted ${migrated} ai_api_key value(s) in whatsapp_bots.`);
+  } catch (e) {
+    console.error('WhatsApp AI key encryption migration:', e.message);
+  }
+
+  // Encrypt existing plaintext api_key values in whatsapp_bots (for Business API)
+  try {
+    const bots = await db.all('SELECT id, api_key FROM whatsapp_bots WHERE api_key IS NOT NULL AND api_key != ""');
+    let migrated = 0;
+    for (const bot of bots) {
+      if (!isEncrypted(bot.api_key)) {
+        await db.run('UPDATE whatsapp_bots SET api_key=? WHERE id=?', [encrypt(bot.api_key), bot.id]);
+        migrated++;
+      }
+    }
+    if (migrated > 0) console.log(`Encrypted ${migrated} api_key value(s) in whatsapp_bots.`);
+  } catch (e) {
+    console.error('WhatsApp API key encryption migration:', e.message);
   }
 } else {
   console.warn('⚠️  ENCRYPTION_KEY not set — skipping encryption migration for ai_api_key and mikrotik password.');

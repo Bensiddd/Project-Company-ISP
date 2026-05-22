@@ -15,7 +15,11 @@
       "Bash(curl -s http://localhost:3001/api/blog-posts)",
       "Bash(curl -s -o /tmp/landing.html -w \"HTTP %{http_code} | size=%{size_download}\\\\n\" http://localhost:5173/)",
       "Read(//tmp/**)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(docker exec *)",
+      "Bash(npx vite *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
