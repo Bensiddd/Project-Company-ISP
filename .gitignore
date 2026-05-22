@@ -6,7 +6,8 @@ yarn-error.log*
 pnpm-debug.log*
 api-key.txt
 progress.txt
-deer-flow/
+.claude
+.kiro
 
 # Production builds
 dist/
