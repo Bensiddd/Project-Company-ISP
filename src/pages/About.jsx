@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { HiLightningBolt, HiGlobe, HiShieldCheck, HiUserGroup } from 'react-icons/hi';
+import Particles from '../components/Particles';
 import './About.css';
 
 export const aboutValues = [
@@ -14,6 +15,7 @@ const About = () => {
   return (
     <div className="about">
       <section className="page-header">
+        <Particles count={40} speed={0.3} />
         <div className="container">
           <h1>About Us</h1>
           <p>Learn more about our company and mission</p>

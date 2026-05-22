@@ -96,7 +96,7 @@ server/
 
 ### 🔐 Dashboard Admin
 - Login: `admin@maznet.id` / `admin123`
-- 6 role: **super_admin** (full), **admin**, **cs** (messages + tickets), **marketing** (blog + services), **editor** (blog), **teknisi** (ticket terbatas)
+- 6 role: **administrator** (full), **admin**, **cs** (messages + tickets), **marketing** (blog + services), **editor** (blog), **teknisi** (ticket terbatas)
 - Sidebar dinamis sesuai role, animated dropdown user menu
 - Activity logs untuk semua aksi CRUD + login
 
@@ -209,7 +209,7 @@ server/
 
 | Tabel | Fungsi |
 |---|---|
-| `admin_users` | Pengguna admin (6 role: super_admin, admin, cs, marketing, editor, teknisi) |
+| `admin_users` | Pengguna admin (6 role: administrator, admin, cs, marketing, editor, teknisi) |
 | `blog_posts` | Artikel blog (slug unik, draft/published, category, tags JSON, featured_image_url, meta_description, read_time, excerpt) |
 | `service_packages` | Paket ISP (JSON features, popular flag, hidden price) |
 | `coverage_areas` | Wilayah cakupan (active/inactive toggle) |

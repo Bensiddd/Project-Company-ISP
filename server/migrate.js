@@ -100,6 +100,13 @@ try {
   if (!e.message.includes('Duplicate column')) console.error('Migration note (system_prompt):', e.message);
 }
 
+// Speed up range queries on traffic_history (filter by interface + time)
+try {
+  await db.run('CREATE INDEX idx_traffic_iface_time ON traffic_history (interface, sampled_at)');
+} catch (e) {
+  if (!e.message.includes('Duplicate key name')) console.error('Migration note (traffic index):', e.message);
+}
+
 // Encrypt existing plaintext ai_api_key values (idempotent: skip if already encrypted)
 if (process.env.ENCRYPTION_KEY) {
   try {

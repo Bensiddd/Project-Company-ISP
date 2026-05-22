@@ -76,7 +76,7 @@ const AdminUsers = () => {
         <div className="form-row">
           <div className="form-group"><label>Role</label>
             <select className="form-control" value={form.role} onChange={e => setForm({...form, role: e.target.value})}>
-              <option value="admin">Admin</option><option value="super_admin">Super Admin</option><option value="cs">CS</option><option value="marketing">Marketing</option><option value="editor">Editor</option><option value="teknisi">Teknisi</option>
+              <option value="admin">Admin</option><option value="administrator">Administrator</option><option value="cs">CS</option><option value="marketing">Marketing</option><option value="editor">Editor</option><option value="teknisi">Teknisi</option>
             </select>
           </div>
           <div className="form-group"><label>Status</label>

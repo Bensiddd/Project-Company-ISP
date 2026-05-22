@@ -53,7 +53,7 @@ const allNavItems = [
 ];
 
 const roleConfig = {
-  administrator: { label: 'Super Admin', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
+  administrator: { label: 'Administrator', color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
   admin: { label: 'Admin', color: '#6366f1', bg: 'rgba(99,102,241,0.15)' },
   editor: { label: 'Editor', color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
   teknisi: { label: 'Teknisi', color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' },

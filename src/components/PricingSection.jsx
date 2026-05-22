@@ -17,6 +17,8 @@ const cardVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
 };
 
+const formatPrice = (num) => 'Rp' + Math.round(num).toLocaleString('id-ID');
+
 const PricingSection = () => {
   const [isAnnual, setIsAnnual] = useState(false);
   const [packages, setPackages] = useState([]);
@@ -75,14 +77,14 @@ const PricingSection = () => {
                 <div className="pricing-header">
                   <h3>{pkg.name}</h3>
                   <div className="pricing-amount">
-                    {pkg.price ? (
+                    {pkg.type !== 'dedicated' && pkg.price ? (
                       <>
                         <span className="currency">Rp</span>
-                        <span className="amount">{pkg.price.toLocaleString('id-ID')}</span>
+                        <span className="amount">{formatPrice(pkg.price)}</span>
                         <span className="period">/bln</span>
                       </>
                     ) : (
-                      <span className="amount" style={{ fontSize: '1.8rem' }}>Custom</span>
+                      <span className="amount">Hubungi Kami</span>
                     )}
                   </div>
                   <p className="pricing-desc">{pkg.description}</p>
@@ -99,7 +101,7 @@ const PricingSection = () => {
                     </div>
                   ))}
                 </div>
-                {pkg.price ? (
+                {pkg.type !== 'dedicated' && pkg.price ? (
                   <a href="#contact" className={`btn ${pkg.popular ? 'btn-primary' : 'btn-secondary'} btn-lg`} style={{ width: '100%', textAlign: 'center' }}>
                     Langganan <HiArrowRight />
                   </a>
@@ -158,7 +160,7 @@ const PricingSection = () => {
           font-weight: 600;
           margin-left: 4px;
         }
-        .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; align-items: start; }
+        .pricing-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
         .pricing-card {
           background: var(--bg-card);
           border-radius: var(--radius-2xl);
@@ -187,7 +189,7 @@ const PricingSection = () => {
         .pricing-header h3 { font-size: 1.5rem; font-weight: 700; margin-bottom: 16px; }
         .pricing-amount { margin-bottom: 12px; }
         .currency { font-size: 1.25rem; font-weight: 600; vertical-align: top; color: var(--text-muted); }
-        .amount { font-size: 3rem; font-weight: 800; line-height: 1; }
+        .amount { font-size: 2.2rem; font-weight: 800; line-height: 1; }
         .period { font-size: 1rem; color: var(--text-muted); }
         .pricing-desc { font-size: 14px; color: var(--text-secondary); line-height: 1.6; }
         .pricing-features { flex: 1; margin-bottom: 32px; }

@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { HiEye, HiEyeOff, HiGlobe } from 'react-icons/hi';
 import { authAPI } from '../services/api';
+import Particles from '../components/Particles';
 
 const Register = () => {
   const [userData, setUserData] = useState({ name: '', email: '', password: '', confirmPassword: '' });
@@ -35,6 +36,7 @@ const Register = () => {
 
   return (
     <div className="auth-page">
+      <Particles count={40} speed={0.3} />
       <div className="auth-bg" />
       <motion.div
         className="auth-container"

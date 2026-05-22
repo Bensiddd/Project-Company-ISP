@@ -12,9 +12,11 @@ const api = {
       port: parseInt(process.env.DB_PORT || '3306'),
       waitForConnections: true,
       connectionLimit: 10,
-      queueLimit: 0
+      queueLimit: 0,
+      timezone: 'Z'
     });
     await pool.execute('SET FOREIGN_KEY_CHECKS = 1');
+    await pool.execute("SET time_zone = '+00:00'");
   },
 
   async run(sql, params = []) {

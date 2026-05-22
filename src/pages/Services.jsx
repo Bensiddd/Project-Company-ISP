@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { HiCheck, HiChip, HiCode, HiCollection, HiChartBar, HiLightningBolt, HiArrowRight } from 'react-icons/hi';
 import { servicePackagesAPI } from '../services/api';
+import Particles from '../components/Particles';
 import './Services.css';
 
 const iconMap = [HiChip, HiCode, HiChartBar, HiCollection, HiLightningBolt];
+const formatPrice = (num) => 'Rp' + Math.round(num).toLocaleString('id-ID');
 
 const Services = () => {
   const [packages, setPackages] = useState([]);
@@ -19,6 +21,7 @@ const Services = () => {
   return (
     <div className="services">
       <section className="page-header">
+        <Particles count={40} speed={0.3} />
         <div className="container">
           <h1>Paket Internet MAZNET</h1>
           <p>Pilih paket internet yang sesuai dengan kebutuhan Anda. Dari rumah tangga hingga perusahaan.</p>
@@ -53,11 +56,11 @@ const Services = () => {
                   <h3>{pkg.name}</h3>
                   <p className="service-desc">{pkg.description}</p>
                   <div className="service-price">
-                    {pkg.price ? (
-                      <><span className="price-amount">Rp {pkg.price.toLocaleString('id-ID')}</span>
+                    {pkg.type !== 'dedicated' && pkg.price ? (
+                      <><span className="price-amount">{formatPrice(pkg.price)}</span>
                       <span className="price-period">/bln</span></>
                     ) : (
-                      <span className="price-amount" style={{ fontSize: '1.2rem' }}>Harga Khusus</span>
+                      <span className="price-amount">Hubungi Kami</span>
                     )}
                   </div>
                   <ul className="service-features">
@@ -72,7 +75,7 @@ const Services = () => {
                       </li>
                     ))}
                   </ul>
-                  {pkg.price ? (
+                  {pkg.type !== 'dedicated' && pkg.price ? (
                     <Link to="/contact" className={`btn ${pkg.popular ? 'btn-primary' : 'btn-secondary'}`} style={{ width: '100%', textAlign: 'center' }}>
                       Langganan Sekarang <HiArrowRight />
                     </Link>

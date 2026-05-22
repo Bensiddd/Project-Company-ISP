@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { HiSave, HiHome, HiPhone, HiMail, HiGlobe, HiLink, HiCheck } from 'react-icons/hi';
+import { HiSave, HiHome, HiPhone, HiMail, HiGlobe, HiLink, HiCheck, HiExclamation } from 'react-icons/hi';
 import { websiteSettingsAPI } from '../../services/api';
 
 const initialSettings = {
@@ -13,6 +13,7 @@ const WebsiteSettings = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const fetch = async () => {
@@ -32,6 +33,7 @@ const WebsiteSettings = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
     setSaving(true);
     try {
       const { data } = await websiteSettingsAPI.update(settings);
@@ -39,6 +41,8 @@ const WebsiteSettings = () => {
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch (err) {
+      const msg = err.response?.data?.message || err.message || 'Failed to save settings';
+      setError(msg);
       console.error('Failed to save settings:', err);
     } finally {
       setSaving(false);
@@ -58,15 +62,11 @@ const WebsiteSettings = () => {
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       <div className="data-table-header">
         <div><h1>Website Settings</h1></div>
-        <div className="header-actions">
-          {saved && <span className="save-success"><HiCheck /> Settings saved!</span>}
-          <button className="btn btn-primary" onClick={handleSubmit} disabled={saving}>
-            <HiSave /> {saving ? 'Saving...' : 'Save Changes'}
-          </button>
-        </div>
       </div>
 
       <form onSubmit={handleSubmit}>
+        {error && <div className="alert alert-error"><HiExclamation /> {error}</div>}
+
         <div className="settings-sections">
           <motion.div className="settings-section" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
             <div className="settings-section-header"><HiHome /> <h2>Company Information</h2></div>
@@ -104,6 +104,13 @@ const WebsiteSettings = () => {
               <div className="form-group"><label>YouTube URL</label><input type="url" className="form-control" name="youtube_url" value={settings.youtube_url || ''} onChange={handleChange} /></div>
             </div>
           </motion.div>
+        </div>
+
+        <div className="settings-footer">
+          {saved && <span className="save-success"><HiCheck /> Settings saved!</span>}
+          <button type="submit" className="btn btn-primary" disabled={saving}>
+            <HiSave /> {saving ? 'Saving...' : 'Save Changes'}
+          </button>
         </div>
       </form>
     </motion.div>

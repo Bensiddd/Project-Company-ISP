@@ -22,7 +22,7 @@ import telegramConversationsRoutes from './routes/telegram-conversations.js';
 import botSettingsRoutes from './routes/bot-settings.js';
 import settingsRoutes from './routes/settings.js';
 import dashboardRoutes from './routes/dashboard.js';
-import mikrotikRoutes from './routes/mikrotik.js';
+import mikrotikRoutes, { startTrafficPolling } from './routes/mikrotik.js';
 import uploadRoutes from './routes/upload.js';
 import whatsappRoutes from './routes/whatsapp.js';
 import whatsappBotsRoutes from './routes/whatsapp-bots.js';

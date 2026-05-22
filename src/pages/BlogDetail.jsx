@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { HiArrowLeft, HiCalendar, HiUser, HiClock, HiTag } from 'react-icons/hi';
 import { blogPostsAPI } from '../services/api';
+import Particles from '../components/Particles';
 import './BlogDetail.css';
 
 const BlogDetail = () => {
@@ -20,6 +21,7 @@ const BlogDetail = () => {
     return (
       <div className="blog-detail">
         <section className="page-header">
+          <Particles count={40} speed={0.3} />
           <div className="container"><h1>Loading...</h1></div>
         </section>
       </div>
@@ -30,6 +32,7 @@ const BlogDetail = () => {
     return (
       <div className="blog-detail">
         <section className="page-header">
+          <Particles count={40} speed={0.3} />
           <div className="container"><h1>Post not found</h1></div>
         </section>
       </div>
@@ -39,6 +42,7 @@ const BlogDetail = () => {
   return (
     <div className="blog-detail">
       <section className={`page-header ${post.featured_image_url ? 'page-header-cover' : ''}`}>
+        <Particles count={40} speed={0.3} />
         {post.featured_image_url && <img src={post.featured_image_url} alt="" className="page-header-bg-img" />}
         {post.featured_image_url && <div className="page-header-overlay" />}
         <div className="container" style={{ position: 'relative', zIndex: 2 }}>

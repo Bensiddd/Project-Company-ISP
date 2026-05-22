@@ -162,23 +162,90 @@ const RANGE_MAP = {
 router.post('/traffic/save', authenticate, async (req, res) => {
   const { interface: iface, rx, tx } = req.body;
   if (!iface) return res.status(400).json({ error: 'Interface is required' });
-  await db.insert('INSERT INTO traffic_history (interface, rx, tx) VALUES (?, ?, ?)', [iface, rx || 0, tx || 0]);
-  res.json({ ok: true });
+  // Explicit Node-side timestamp (UTC) — single source of truth, immune to MySQL session TZ drift
+  await db.insert('INSERT INTO traffic_history (interface, rx, tx, sampled_at) VALUES (?, ?, ?, ?)', [iface, rx || 0, tx || 0, new Date()]);
+  res.json({ ok: true, sampled_at: new Date().toISOString() });
 });
 
 router.get('/traffic/history/:interface', authenticate, async (req, res) => {
   const { interface: iface } = req.params;
   const range = RANGE_MAP[req.query.range] || RANGE_MAP['3m'];
-  const since = new Date(Date.now() - range.seconds * 1000).toISOString().replace('T', ' ').split('.')[0];
+  // Use UNIX_TIMESTAMP for the WHERE filter so we never depend on MySQL session TZ
+  // (works regardless of how `sampled_at` was inserted)
+  const sinceUnix = Math.floor((Date.now() - range.seconds * 1000) / 1000);
   const rows = await db.all(
-    `SELECT ROUND(UNIX_TIMESTAMP(sampled_at) / ?) * ? as time_bucket, AVG(rx) as rx, AVG(tx) as tx FROM traffic_history WHERE interface = ? AND sampled_at >= ? GROUP BY time_bucket ORDER BY time_bucket ASC`,
-    [range.bucket, range.bucket, iface, since]
+    `SELECT ROUND(UNIX_TIMESTAMP(sampled_at) / ?) * ? as time_bucket, AVG(rx) as rx, AVG(tx) as tx FROM traffic_history WHERE interface = ? AND UNIX_TIMESTAMP(sampled_at) >= ? GROUP BY time_bucket ORDER BY time_bucket ASC`,
+    [range.bucket, range.bucket, iface, sinceUnix]
   );
-  res.json(rows.map(r => ({
-    time: r.time_bucket,
-    rx: Math.round(r.rx),
-    tx: Math.round(r.tx)
-  })));
+  res.json(rows.map(r => {
+    const ms = Number(r.time_bucket) * 1000;
+    return {
+      time: Number(r.time_bucket),       // unix seconds (kept for backwards compat with frontend)
+      ms,                                  // explicit ms-since-epoch
+      iso: new Date(ms).toISOString(),    // absolute UTC ISO string
+      rx: Math.round(r.rx),
+      tx: Math.round(r.tx)
+    };
+  }));
 });
+
+// ── Background traffic polling ────────────────────────────────────────
+// Samples every running interface @ 60s and writes to traffic_history,
+// independent of the dashboard being open. Without this, range buttons
+// (3m/30m/1h/1d/1w/1m) show empty data for any interface the user has
+// never opened.
+
+const POLL_INTERVAL_MS = 60_000;
+let trafficPollTimer = null;
+let trafficPollInflight = false;
+
+async function pollAllInterfaces() {
+  if (trafficPollInflight) return; // skip if previous tick still running
+  trafficPollInflight = true;
+  try {
+    const config = await db.get('SELECT * FROM mikrotik_settings WHERE is_active = 1 ORDER BY id DESC LIMIT 1');
+    if (!config || !config.host) return; // not configured yet
+
+    const conn = await getMikrotikConnection();
+    const ifaces = await conn.write('/interface/print');
+    const running = (ifaces || []).filter(i => i.running === 'true' && i.disabled !== 'true');
+
+    const now = new Date();
+    for (const iface of running) {
+      try {
+        const traffic = await conn.write('/interface/monitor-traffic', [`=interface=${iface.name}`, '=once=']);
+        const row = traffic?.[0] || {};
+        const rx = parseInt(row['rx-bits-per-second']) || 0;
+        const tx = parseInt(row['tx-bits-per-second']) || 0;
+        await db.insert(
+          'INSERT INTO traffic_history (interface, rx, tx, sampled_at) VALUES (?, ?, ?, ?)',
+          [iface.name, rx, tx, now]
+        );
+      } catch (e) {
+        console.warn(`[Traffic Poll] sample ${iface.name} failed:`, e.message);
+      }
+    }
+  } catch (e) {
+    // Most common: Mikrotik unreachable. Don't spam — log once per tick.
+    console.warn('[Traffic Poll] tick error:', e.message);
+  } finally {
+    trafficPollInflight = false;
+  }
+}
+
+export async function startTrafficPolling() {
+  if (trafficPollTimer) return;
+  console.log(`[Traffic Poll] starting — sampling running interfaces every ${POLL_INTERVAL_MS / 1000}s`);
+  // Fire immediately (don't wait 60s for the first sample)
+  pollAllInterfaces().catch(() => {});
+  trafficPollTimer = setInterval(() => pollAllInterfaces().catch(() => {}), POLL_INTERVAL_MS);
+}
+
+export function stopTrafficPolling() {
+  if (trafficPollTimer) {
+    clearInterval(trafficPollTimer);
+    trafficPollTimer = null;
+  }
+}
 
 export default router;

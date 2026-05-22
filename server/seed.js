@@ -7,7 +7,7 @@ const hash = bcrypt.hashSync('admin123', 10);
 await db.init();
 
 // Use INSERT IGNORE to preserve existing row IDs for FK references
-await db.run('INSERT IGNORE INTO admin_users (id, username, password_hash, email, full_name, role, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)', [1, 'superadmin', hash, 'superadmin@maznet.id', 'Super Admin', 'administrator', 1]);
+await db.run('INSERT IGNORE INTO admin_users (id, username, password_hash, email, full_name, role, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)', [1, 'superadmin', hash, 'superadmin@maznet.id', 'Administrator', 'administrator', 1]);
 await db.run('INSERT IGNORE INTO admin_users (id, username, password_hash, email, full_name, role, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)', [2, 'admin', hash, 'admin@maznet.id', 'Admin MAZNET', 'administrator', 1]);
 await db.run('INSERT IGNORE INTO admin_users (id, username, password_hash, email, full_name, role, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)', [3, 'teknisi', hash, 'teknisi@maznet.id', 'Teknisi MAZNET', 'admin', 1]);
 await db.run('INSERT IGNORE INTO admin_users (id, username, password_hash, email, full_name, role, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)', [4, 'cs', hash, 'cs@maznet.id', 'Customer Service', 'cs', 1]);
