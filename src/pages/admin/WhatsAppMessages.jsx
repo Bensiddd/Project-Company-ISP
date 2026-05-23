@@ -2,8 +2,10 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiArrowLeft, HiChatAlt2, HiChip, HiRefresh, HiTrash, HiCog } from 'react-icons/hi';
 import { whatsappConversationsAPI, whatsappAPI } from '../../services/api';
+import { useToast } from '../../components/Toast';
 
 const WhatsAppMessages = () => {
+  const { showToast } = useToast();
   const [convos, setConvos] = useState([]);
   const [selectedConvo, setSelectedConvo] = useState(null);
   const [convoMsgs, setConvoMsgs] = useState([]);
@@ -19,6 +21,51 @@ const WhatsAppMessages = () => {
   const chatEndRef = useRef(null);
   const msgContainerRef = useRef(null);
   const selectedConvoRef = useRef(null);
+  const notifiedConvosRef = useRef({});
+
+  // Local, 100% offline Web Audio API sound synthesizer
+  const playChimeSound = useCallback(() => {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+      osc.frequency.exponentialRampToValueAtTime(880.00, ctx.currentTime + 0.12); // A5
+      
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.25);
+      
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.25);
+    } catch (err) {
+      console.warn("Audio chime play failed:", err);
+    }
+  }, []);
+
+  // First-click audio unlocker to comply with modern browser autoplay rules
+  useEffect(() => {
+    const unlock = () => {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (AudioCtx) {
+          const ctx = new AudioCtx();
+          if (ctx.state === 'suspended') {
+            ctx.resume();
+          }
+        }
+      } catch (e) {}
+      document.removeEventListener('click', unlock);
+    };
+    document.addEventListener('click', unlock);
+    return () => document.removeEventListener('click', unlock);
+  }, []);
 
   useEffect(() => { selectedConvoRef.current = selectedConvo; }, [selectedConvo]);
 
@@ -34,13 +81,34 @@ const WhatsAppMessages = () => {
   const fetchConvos = useCallback(async () => {
     try {
       const { data } = await whatsappConversationsAPI.getAll();
+      
+      // Deteksi pesan baru pada mode CS (human)
+      data.forEach(convo => {
+        if (convo.status === 'human' && convo.unread > 0) {
+          const prevUnread = notifiedConvosRef.current[convo.id] || 0;
+          if (convo.unread > prevUnread) {
+            // Mainkan audio Chime
+            playChimeSound();
+            
+            // Tampilkan Toast
+            showToast({
+              type: 'info',
+              title: `💬 CS Chat dari ${convo.user_name || 'Pelanggan'}`,
+              subtitle: convo.last_message || 'Ada pesan baru masuk.'
+            });
+          }
+        }
+        // Update cache
+        notifiedConvosRef.current[convo.id] = convo.unread;
+      });
+
       setConvos(data);
       if (selectedConvoRef.current) {
         const fresh = data.find(c => c.id === selectedConvoRef.current.id);
         if (fresh) setSelectedConvo(fresh);
       }
     } catch (err) { console.error(err); }
-  }, []);
+  }, [showToast]);
 
   const refreshOpenChat = useCallback(async () => {
     const convo = selectedConvoRef.current;

@@ -186,7 +186,8 @@ export const whatsappBotsAPI = {
   getById: (id) => api.get(`/whatsapp-bots/${id}`),
   create: (botData) => api.post('/whatsapp-bots', botData),
   update: (id, botData) => api.put(`/whatsapp-bots/${id}`, botData),
-  delete: (id) => api.delete(`/whatsapp-bots/${id}`)
+  delete: (id) => api.delete(`/whatsapp-bots/${id}`),
+  toggle: (id) => api.post(`/whatsapp-bots/${id}/toggle`)
 };
 
 // WhatsApp actions endpoints

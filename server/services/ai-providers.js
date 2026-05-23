@@ -23,6 +23,27 @@ function resolvePrompt(systemPrompt) {
   return (systemPrompt && String(systemPrompt).trim()) ? String(systemPrompt) : DEFAULT_SYSTEM_PROMPT;
 }
 
+// Clean and normalize API URL to prevent path duplication or trailing slashes
+function normalizeUrl(baseUrl, defaultUrl, pathSuffix) {
+  let url = (baseUrl || defaultUrl).trim();
+  
+  // Strip trailing slashes
+  url = url.replace(/\/+$/, '');
+
+  // If already ends with the full path, return it as is
+  if (url.endsWith(pathSuffix)) {
+    return url;
+  }
+
+  // If ends with just "/v1", append the remaining suffix
+  if (url.endsWith('/v1') && pathSuffix.startsWith('/v1/')) {
+    return url + pathSuffix.substring(3);
+  }
+
+  // Default append
+  return url + pathSuffix;
+}
+
 export async function callAI(provider, model, apiKey, userMessage, aiUrl, history = [], systemPrompt = null) {
   const prompt = resolvePrompt(systemPrompt);
   switch (provider) {
@@ -42,10 +63,12 @@ export async function callAI(provider, model, apiKey, userMessage, aiUrl, histor
 }
 
 async function callOpenAI(model, apiKey, userMessage, baseUrl, skipV1 = false, history = [], systemPrompt = DEFAULT_SYSTEM_PROMPT) {
-  const cleanBase = (baseUrl || 'https://api.openai.com').replace(/\/+$/, '');
-  const url = (skipV1 || cleanBase.endsWith('/v1') || cleanBase.endsWith('/v1/'))
-    ? cleanBase.replace(/\/+$/, '') + '/chat/completions'
-    : cleanBase + '/v1/chat/completions';
+  const defaultUrl = 'https://api.openai.com';
+  const pathSuffix = '/v1/chat/completions';
+  const url = skipV1 
+    ? normalizeUrl(baseUrl, defaultUrl, '').replace(/\/+$/, '') + '/chat/completions'
+    : normalizeUrl(baseUrl, defaultUrl, pathSuffix);
+
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 20000);
@@ -56,7 +79,7 @@ async function callOpenAI(model, apiKey, userMessage, baseUrl, skipV1 = false, h
       body: JSON.stringify({
         model,
         messages: buildMessages(systemPrompt, history, userMessage),
-        max_tokens: 500
+        max_tokens: 200
       })
     });
     clearTimeout(timeout);
@@ -88,7 +111,7 @@ async function callGemini(model, apiKey, userMessage, baseUrl, history = [], sys
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: controller.signal,
-      body: JSON.stringify({ contents, generationConfig: { maxOutputTokens: 500 } })
+      body: JSON.stringify({ contents, generationConfig: { maxOutputTokens: 200 } })
     });
     clearTimeout(timeout);
     if (!resp.ok) {
@@ -116,7 +139,7 @@ async function callClaude(model, apiKey, userMessage, baseUrl, history = [], sys
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
       signal: controller.signal,
       body: JSON.stringify({
-        model, max_tokens: 500,
+        model, max_tokens: 200,
         system: systemPrompt,
         messages: claudeMsgs
       })
@@ -133,8 +156,25 @@ async function callClaude(model, apiKey, userMessage, baseUrl, history = [], sys
   } catch (e) { return { ok: false, error: e.name === 'AbortError' ? 'Request timed out (20s)' : e.message }; }
 }
 
-async function callCustom(url, apiKey, userMessage, model, history = [], systemPrompt = DEFAULT_SYSTEM_PROMPT) {
-  if (!url) return { ok: false, error: 'Custom API URL is required' };
+async function callCustom(rawUrl, apiKey, userMessage, model, history = [], systemPrompt = DEFAULT_SYSTEM_PROMPT) {
+  if (!rawUrl) return { ok: false, error: 'Custom API URL is required' };
+  
+  // Normalize and trim Custom URL to ensure proper endpoint format
+  let url = rawUrl.trim();
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    // If user provided just domain or base path, helpfully append typical chat completion endpoint
+    if (!url.includes('/chat/completions') && !url.includes('/api/v1/chat/completions') && !url.includes('/api/chat')) {
+      const cleanUrl = url.replace(/\/+$/, '');
+      if (cleanUrl.endsWith('/v1')) {
+        url = cleanUrl + '/chat/completions';
+      } else {
+        url = cleanUrl + '/v1/chat/completions';
+      }
+    }
+  } else {
+    return { ok: false, error: 'URL must start with http:// or https://' };
+  }
+
   try {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 20000);
@@ -147,7 +187,7 @@ async function callCustom(url, apiKey, userMessage, model, history = [], systemP
       body: JSON.stringify({
         model,
         messages: buildMessages(systemPrompt, history, userMessage),
-        max_tokens: 500
+        max_tokens: 200
       })
     });
     clearTimeout(timeout);

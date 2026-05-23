@@ -24,12 +24,6 @@ export async function handleIncomingMessage(botId, chatId, messageText, userName
     await saveMessage(botId, chatId, 'user', messageText, convo.id);
     await syncChatToContactMessage('whatsapp', botId, chatId, userName, messageText, chatId);
 
-    // Check cooldown
-    if (await isCooldownBlocked(convo) && convo.status !== 'human' && !['/start', '/stop', 'menu', 'batal', '4'].includes(messageText.toLowerCase())) {
-      await sendMessage(bot, chatId, '⏳ Mohon tunggu sebelum menggunakan fitur ini.');
-      return;
-    }
-
     // Handle /stop
     if (messageText.toLowerCase() === '/stop') {
       await db.run('UPDATE whatsapp_conversations SET status=?, state=?, pending_data=? WHERE id=?', ['ended', 'idle', '', convo.id]);
@@ -45,9 +39,25 @@ export async function handleIncomingMessage(botId, chatId, messageText, userName
       return;
     }
 
-    // Human mode - just save, don't respond
+    // Human mode - check if CS has not replied for 5 minutes, if so auto-switch to AI!
     if (convo.status === 'human') {
-      return;
+      const lastBotMessage = await db.get(
+        'SELECT created_at FROM whatsapp_messages WHERE conversation_id = ? AND role = ? ORDER BY created_at DESC LIMIT 1',
+        [convo.id, 'bot']
+      );
+      
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      if (lastBotMessage && new Date(lastBotMessage.created_at) < fiveMinutesAgo) {
+        await db.run("UPDATE whatsapp_conversations SET status = 'ai', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [convo.id]);
+        
+        const autoSwitchNotice = '🤖 Layanan dialihkan kembali ke AI karena CS kami sedang sibuk/belum merespon selama 5 menit. Ada yang bisa saya bantu?';
+        await sendMessage(bot, chatId, autoSwitchNotice);
+        await saveMessage(botId, chatId, 'bot', autoSwitchNotice, convo.id);
+        
+        convo.status = 'ai';
+      } else {
+        return;
+      }
     }
 
     // State machine
@@ -183,7 +193,7 @@ async function handleState(bot, chatId, messageText, userName, convo, state) {
   return false;
 }
 
-async function handleAIResponse(bot, chatId, messageText, convo, aiApiKey) {
+export async function handleAIResponse(bot, chatId, messageText, convo, aiApiKey) {
   try {
     const history = await db.all('SELECT role, message FROM whatsapp_messages WHERE conversation_id=? ORDER BY id DESC LIMIT 10', [convo.id]);
     const defaultModels = { openai: 'gpt-4o-mini', openrouter: 'openai/gpt-4o-mini', gemini: 'gemini-2.0-flash', claude: 'claude-3-haiku-20240307', custom: '' };
@@ -202,7 +212,7 @@ async function handleAIResponse(bot, chatId, messageText, convo, aiApiKey) {
   }
 }
 
-async function handleTemplateResponse(bot, chatId, messageText, convo, userName) {
+export async function handleTemplateResponse(bot, chatId, messageText, convo, userName) {
   const isThankYou = /terima kasih|makasih|thanks|thx|thank/i.test(messageText);
   const reply = isThankYou
     ? 'Sama-sama! Ada lagi yang bisa saya bantu? 😊'
@@ -276,6 +286,7 @@ async function isCooldownBlocked(convo) {
       await db.run('UPDATE whatsapp_conversations SET cooldown_until=NULL WHERE id=?', [convo.id]);
       return false;
     }
+    return true;
   } catch (e) {
     console.error('[WhatsApp] Cooldown check error:', e);
     return false;
@@ -288,17 +299,30 @@ export async function handleMenuSelection(botId, chatId, selection, userName) {
   if (!bot) return;
 
   const convo = await getOrCreateConversation(botId, chatId, userName);
+  const isBlocked = await isCooldownBlocked(convo);
 
   switch (selection) {
     case '1': // Buat Ticket
+      if (isBlocked) {
+        await sendMessage(bot, chatId, '⏳ Anda memiliki laporan aktif yang sedang diproses. Silakan hubungi CS (opsi 4) jika memerlukan bantuan mendesak.');
+        break;
+      }
       await db.run('UPDATE whatsapp_conversations SET state=?, pending_data=? WHERE id=?', ['awaiting_ticket_name', '{}', convo.id]);
       await sendMessage(bot, chatId, '📝 Silakan masukkan *Nama* Anda:\n\n(Ketik *batal* untuk membatalkan)');
       break;
     case '2': // Upgrade
+      if (isBlocked) {
+        await sendMessage(bot, chatId, '⏳ Anda memiliki laporan aktif yang sedang diproses. Silakan hubungi CS (opsi 4) jika memerlukan bantuan mendesak.');
+        break;
+      }
       await db.run('UPDATE whatsapp_conversations SET state=? WHERE id=?', ['awaiting_upgrade_customer_id', convo.id]);
       await sendMessage(bot, chatId, '📶 Silakan masukkan ID pelanggan Anda:\n\n(Ketik *batal* untuk membatalkan)');
       break;
     case '3': // Instalasi
+      if (isBlocked) {
+        await sendMessage(bot, chatId, '⏳ Anda memiliki laporan aktif yang sedang diproses. Silakan hubungi CS (opsi 4) jika memerlukan bantuan mendesak.');
+        break;
+      }
       await db.run('UPDATE whatsapp_conversations SET state=?, pending_data=? WHERE id=?', ['awaiting_install_name', '{}', convo.id]);
       await sendMessage(bot, chatId, '🔧 Silakan masukkan *Nama* Anda:\n\n(Ketik *batal* untuk membatalkan)');
       break;

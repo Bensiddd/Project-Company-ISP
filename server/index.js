@@ -81,6 +81,10 @@ db.init().then(async () => {
     // Initialize WhatsApp bots
     const { initializeWhatsAppBots } = await import('./services/whatsapp/provider-factory.js');
     initializeWhatsAppBots(db).catch(err => console.error('Failed to initialize WhatsApp bots:', err));
+
+    // Initialize CS Timeout Background Worker
+    const { startCSTimeoutWorker } = await import('./services/cs-timeout-worker.js');
+    startCSTimeoutWorker(db);
   });
 }).catch(err => {
   console.error('Failed to initialize database:', err);

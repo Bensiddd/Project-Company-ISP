@@ -210,8 +210,12 @@ router.post('/check-ai', authenticate, async (req, res) => {
     const provider = ai_provider || bot.ai_provider || 'openai';
     const model = ai_model || bot.ai_model || 'gpt-4o-mini';
     const apiKey = ai_api_key || (bot.ai_api_key ? decrypt(bot.ai_api_key) : null);
-    const url = ai_url || bot.ai_url;
+    const url = (ai_url !== undefined ? ai_url : bot.ai_url) || '';
     const message = test_message || 'Halo, saya ingin tanya tentang paket internet';
+
+    if (provider === 'custom' && !url.trim()) {
+      return res.status(400).json({ message: 'Custom API URL is required for Custom provider' });
+    }
 
     if (!apiKey) {
       return res.status(400).json({ message: 'AI API key not configured' });

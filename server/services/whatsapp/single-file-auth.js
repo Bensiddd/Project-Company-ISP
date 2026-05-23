@@ -8,7 +8,13 @@ export async function useSingleFileAuthState(authDir) {
 
   let data;
   if (existsSync(filePath)) {
-    data = JSON.parse(readFileSync(filePath, 'utf-8'), BufferJSON.reviver);
+    const raw = JSON.parse(readFileSync(filePath, 'utf-8'), BufferJSON.reviver);
+    // If wrapping in _summary layout, extract original data structures
+    if (raw.creds && raw.keys) {
+      data = { creds: raw.creds, keys: raw.keys };
+    } else {
+      data = raw;
+    }
   } else {
     // Migrate from old multi-file format if exists
     const oldCredsPath = path.join(authDir, 'creds.json');
@@ -47,7 +53,21 @@ export async function useSingleFileAuthState(authDir) {
     },
     saveCreds: () => {
       if (data.creds) {
-        writeFileSync(filePath, JSON.stringify(data, BufferJSON.replacer, 2));
+        const summary = {
+          _note: 'Auto-generated. Do not edit manually.',
+          phone: data.creds.me?.id?.split(':')[0]?.split('@')[0] || null,
+          name: data.creds.me?.name || null,
+          platform: data.creds.platform || null,
+          registered: data.creds.registered || false,
+          registrationId: data.creds.registrationId || null,
+          preKeysCount: Object.keys(data.keys || {}).filter(k => k.startsWith('pre-key:')).length,
+          lastSync: data.creds.lastAccountSyncTimestamp
+            ? new Date(data.creds.lastAccountSyncTimestamp * 1000).toISOString()
+            : null,
+          updatedAt: new Date().toISOString()
+        };
+        const output = { _summary: summary, creds: data.creds, keys: data.keys || {} };
+        writeFileSync(filePath, JSON.stringify(output, BufferJSON.replacer, 2));
       }
     }
   };

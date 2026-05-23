@@ -169,12 +169,6 @@ async function processAI(bot, chatId, userText, userName) {
     await saveMessage(bot.id, String(chatId), 'user', userText, convo.id);
     await syncChatToContactMessage('telegram', bot.id, String(chatId), userName, userText);
 
-    if (await isCooldownBlocked(convo) && convo.status !== 'human' && !['/start', '/stop', 'menu', 'batal'].includes(userText.toLowerCase())) {
-      const remaining = formatCooldownRemaining(convo);
-      await sendBotMessage(bot.bot_token, String(chatId), '⏳ Mohon tunggu sebelum menggunakan fitur ini.');
-      return;
-    }
-
     if (convo.status === 'ended') {
       if (userText === '/start') {
         await db.run('UPDATE telegram_conversations SET status=?, state=?, pending_data=? WHERE id=?', ['ai', 'idle', '', convo.id]);
@@ -199,7 +193,23 @@ async function processAI(bot, chatId, userText, userName) {
     }
 
     if (convo.status === 'human') {
-      return;
+      const lastBotMessage = await db.get(
+        'SELECT created_at FROM telegram_messages WHERE conversation_id = ? AND role = ? ORDER BY created_at DESC LIMIT 1',
+        [convo.id, 'bot']
+      );
+      
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      if (lastBotMessage && new Date(lastBotMessage.created_at) < fiveMinutesAgo) {
+        await db.run("UPDATE telegram_conversations SET status = 'ai', updated_at = CURRENT_TIMESTAMP WHERE id = ?", [convo.id]);
+        
+        const autoSwitchNotice = '🤖 Layanan dialihkan kembali ke AI karena CS kami sedang sibuk/belum merespon selama 5 menit. Ada yang bisa saya bantu?';
+        await sendBotMessage(bot.bot_token, String(chatId), autoSwitchNotice);
+        await saveMessage(bot.id, String(chatId), 'bot', autoSwitchNotice, convo.id);
+        
+        convo.status = 'ai';
+      } else {
+        return;
+      }
     }
 
     const state = convo.state || 'idle';
@@ -479,15 +489,16 @@ async function processCallbackQuery(bot, callbackQuery) {
   const userName = callbackQuery.from.first_name || 'User';
   const callbackId = callbackQuery.id;
 
-  await answerCallbackQuery(bot.bot_token, callbackId, '⏳ Memproses...');
-
   try {
     const convo = await getOrCreateConversation(bot.id, String(chatId), userName);
 
     if (await isCooldownBlocked(convo) && data !== 'talk_to_cs' && data !== 'end_session' && data !== 'back_to_menu' && data !== 'skip_identity') {
-      await sendBotMessage(bot.bot_token, String(chatId), '⏳ Mohon tunggu sebelum menggunakan fitur ini.');
+      await answerCallbackQuery(bot.bot_token, callbackId, '⏳ Fitur dinonaktifkan sementara.');
+      await sendBotMessage(bot.bot_token, String(chatId), '⏳ Anda memiliki laporan aktif yang sedang diproses. Silakan hubungi CS jika memerlukan bantuan mendesak.');
       return;
     }
+
+    await answerCallbackQuery(bot.bot_token, callbackId, '⏳ Memproses...');
 
     switch (data) {
       case 'create_ticket': {

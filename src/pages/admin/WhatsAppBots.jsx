@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import FormModal from '../../components/FormModal';
 import { HiChatAlt2, HiShieldCheck, HiExclamationCircle, HiRefresh, HiGlobe, HiQrcode } from 'react-icons/hi';
 import { whatsappBotsAPI, whatsappAPI } from '../../services/api';
+import { useToast } from '../../components/Toast';
 
 const DEFAULT_SYSTEM_PROMPT = 'Anda adalah customer service MAZNET, ISP RT RW NET di Bekasi. Jawab dengan ramah, profesional, dan ringkas dalam Bahasa Indonesia. Jangan mengulangi jawaban yang sudah pernah Anda berikan sebelumnya dalam percakapan ini.';
 const initialForm = { name: '', phone_number: '', provider: 'baileys', is_active: true, role: 'customer_service', ai_enabled: false, ai_provider: '', ai_model: '', ai_api_key: '', ai_url: '', api_key: '', webhook_url: '', system_prompt: '' };
@@ -11,6 +12,7 @@ const roleColors = { customer_service: '#10b981', admin: '#6366f1', teknisi: '#f
 const providerLabels = { baileys: 'Baileys (Dev)', 'business-api': 'Business API (Prod)' };
 
 const WhatsAppBots = () => {
+  const { showToast } = useToast();
   const [bots, setBots] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
@@ -21,6 +23,7 @@ const WhatsAppBots = () => {
   const [qrCodes, setQrCodes] = useState({});
   const [testingAI, setTestingAI] = useState(false);
   const [aiTestResult, setAiTestResult] = useState(null);
+  const [togglingBot, setTogglingBot] = useState(null);
   const pollingIntervals = useRef({}); // Track polling intervals per bot
 
   const fetchBots = async () => {
@@ -58,10 +61,10 @@ const WhatsAppBots = () => {
       const { data } = await whatsappAPI.connect(bot.id);
       setStatuses(prev => ({ ...prev, [bot.id]: { status: data.status } }));
       if (data.status !== 'connected') {
-        alert('⏳ ' + data.message);
+        showToast({ type: 'warning', title: '⏳ Menghubungkan', subtitle: data.message });
         checkStatus(bot.id);
       } else {
-        alert('✅ ' + data.message);
+        showToast({ type: 'success', title: '✅ Terhubung', subtitle: data.message });
       }
       // Poll for QR code if Baileys
       if (bot.provider === 'baileys') {
@@ -79,6 +82,7 @@ const WhatsAppBots = () => {
               clearInterval(interval);
               delete pollingIntervals.current[bot.id];
               setQrCodes(prev => ({ ...prev, [bot.id]: null }));
+              showToast({ type: 'success', title: '✅ WhatsApp Terhubung', subtitle: 'Bot siap digunakan.' });
             } else if (statusData.qr_code) {
               setQrCodes(prev => ({ ...prev, [bot.id]: statusData.qr_code }));
             }
@@ -95,7 +99,7 @@ const WhatsAppBots = () => {
         }, 60000); // Stop after 1 minute
       }
     } catch (e) {
-      alert('❌ ' + (e.response?.data?.message || e.message));
+      showToast({ type: 'error', title: '❌ Gagal Menghubungkan', subtitle: e.response?.data?.message || e.message });
     }
   };
 
@@ -103,11 +107,11 @@ const WhatsAppBots = () => {
     if (!confirm('Disconnect bot ' + bot.name + '?')) return;
     try {
       const { data } = await whatsappAPI.disconnect(bot.id);
-      alert('✅ ' + data.message);
+      showToast({ type: 'warning', title: '🔴 Bot Terputus', subtitle: data.message });
       checkStatus(bot.id);
       setQrCodes(prev => ({ ...prev, [bot.id]: null }));
     } catch (e) {
-      alert('❌ ' + (e.response?.data?.message || e.message));
+      showToast({ type: 'error', title: '❌ Gagal Memutuskan', subtitle: e.response?.data?.message || e.message });
     }
   };
 
@@ -116,9 +120,9 @@ const WhatsAppBots = () => {
     if (!chatId) return;
     try {
       const { data } = await whatsappAPI.test(bot.id, chatId, 'Test message from MAZNET');
-      alert('✅ Message sent successfully!');
+      showToast({ type: 'success', title: '✅ Pesan Terkirim', subtitle: `Pesan test sukses dikirim ke ${chatId}` });
     } catch (e) {
-      alert('❌ ' + (e.response?.data?.message || e.message));
+      showToast({ type: 'error', title: '❌ Test Gagal', subtitle: e.response?.data?.message || e.message });
     }
   };
 
@@ -127,17 +131,21 @@ const WhatsAppBots = () => {
     if (!webhookUrl) return;
     try {
       const { data } = await whatsappAPI.setWebhook(bot.id, webhookUrl);
-      alert('✅ Webhook set successfully!');
+      showToast({ type: 'success', title: '✅ Webhook Di-set', subtitle: `Webhook sukses diarahkan ke: ${webhookUrl}` });
       fetchBots();
     } catch (e) {
-      alert('❌ ' + (e.response?.data?.message || e.message));
+      showToast({ type: 'error', title: '❌ Gagal Set Webhook', subtitle: e.response?.data?.message || e.message });
     }
   };
 
   const handleTestFormAI = async () => {
     const botId = editing?.id;
-    if (!botId) { alert('⚠️ Simpan bot terlebih dahulu sebelum test.'); return; }
-    if (!form.ai_provider) { alert('⚠️ Pilih AI Provider terlebih dahulu.'); return; }
+    if (!botId) { showToast({ type: 'warning', title: '⚠️ Simpan Bot', subtitle: 'Simpan bot terlebih dahulu sebelum test.' }); return; }
+    if (!form.ai_provider) { showToast({ type: 'warning', title: '⚠️ Pilih Provider', subtitle: 'Pilih AI Provider terlebih dahulu.' }); return; }
+    if (form.ai_provider === 'custom' && !form.ai_url?.trim()) {
+      showToast({ type: 'warning', title: '⚠️ URL Diperlukan', subtitle: 'Custom API URL wajib diisi.' });
+      return;
+    }
     setTestingAI(true);
     setAiTestResult(null);
     try {
@@ -148,12 +156,34 @@ const WhatsAppBots = () => {
         ai_url: form.ai_url
       });
       setAiTestResult(data);
+      if (data.success) {
+        showToast({ type: 'success', title: '✅ AI Berhasil Merespon', subtitle: `Model: ${data.model}` });
+      } else {
+        showToast({ type: 'error', title: '❌ AI Gagal Merespon', subtitle: data.error });
+      }
     } catch (e) {
-      setAiTestResult({ success: false, error: e.message });
+      setAiTestResult({ success: false, error: e.response?.data?.message || e.message });
+      showToast({ type: 'error', title: '❌ Test AI Gagal', subtitle: e.response?.data?.message || e.message });
     } finally { setTestingAI(false); }
   };
 
   const handleSubmit = async () => {
+    // Front-end validations before save
+    if (form.role === 'customer_service' && form.ai_enabled) {
+      if (!form.ai_provider) {
+        showToast({ type: 'warning', title: '⚠️ Input Diperlukan', subtitle: 'Pilih AI Provider terlebih dahulu.' });
+        return;
+      }
+      if (form.ai_provider === 'custom' && !form.ai_url?.trim()) {
+        showToast({ type: 'warning', title: '⚠️ Input Diperlukan', subtitle: 'Custom API URL wajib diisi.' });
+        return;
+      }
+      if (form.ai_url && !form.ai_url.trim().startsWith('http://') && !form.ai_url.trim().startsWith('https://')) {
+        showToast({ type: 'warning', title: '⚠️ Format URL Salah', subtitle: 'URL harus dimulai dengan http:// atau https://' });
+        return;
+      }
+    }
+
     setSaving(true);
     try {
       const payload = { ...form };
@@ -164,8 +194,11 @@ const WhatsAppBots = () => {
         payload.ai_api_key = '';
         payload.ai_url = '';
         payload.system_prompt = '';
-      } else if (editing && !payload.ai_api_key) {
-        delete payload.ai_api_key;
+      } else {
+        if (payload.ai_url) payload.ai_url = payload.ai_url.trim();
+        if (editing && !payload.ai_api_key) {
+          delete payload.ai_api_key;
+        }
       }
       if (editing && !payload.api_key) {
         delete payload.api_key;
@@ -173,8 +206,10 @@ const WhatsAppBots = () => {
 
       if (editing) {
         await whatsappBotsAPI.update(editing.id, payload);
+        showToast({ type: 'success', title: '✅ Bot Di-update', subtitle: 'Pengaturan bot WhatsApp berhasil disimpan.' });
       } else {
         await whatsappBotsAPI.create(payload);
+        showToast({ type: 'success', title: '✅ Bot Dibuat', subtitle: 'Bot WhatsApp baru berhasil ditambahkan.' });
       }
       
       setShowForm(false);
@@ -183,7 +218,7 @@ const WhatsAppBots = () => {
       setAiTestResult(null);
       fetchBots();
     } catch (e) {
-      alert('❌ Save failed: ' + (e.response?.data?.message || e.message));
+      showToast({ type: 'error', title: '❌ Gagal Menyimpan', subtitle: e.response?.data?.message || e.message });
     } finally { setSaving(false); }
   };
 
@@ -192,8 +227,9 @@ const WhatsAppBots = () => {
     try {
       await whatsappBotsAPI.delete(id);
       setBots(prev => prev.filter(b => b.id !== id));
+      showToast({ type: 'success', title: '🗑️ Bot Dihapus', subtitle: 'Bot WhatsApp berhasil dihapus dari sistem.' });
     } catch (e) {
-      alert('❌ Delete failed: ' + (e.response?.data?.message || e.message));
+      showToast({ type: 'error', title: '❌ Gagal Menghapus', subtitle: e.response?.data?.message || e.message });
     }
   };
 
@@ -248,13 +284,26 @@ const WhatsAppBots = () => {
                     {roleLabels[bot.role] || bot.role}
                   </span>
                   <div
-                    className={`toggle-switch ${bot.is_active ? 'on' : 'off'}`}
+                    className={`toggle-switch ${bot.is_active ? 'on' : 'off'} ${togglingBot === bot.id ? 'opacity-50 pointer-events-none' : ''}`}
                     onClick={async () => {
+                      if (togglingBot) return;
+                      setTogglingBot(bot.id);
                       try {
-                        await whatsappBotsAPI.update(bot.id, { ...bot, is_active: !bot.is_active });
+                        const { data } = await whatsappBotsAPI.toggle(bot.id);
+                        showToast({
+                          type: data.is_active ? 'success' : 'warning',
+                          title: data.is_active ? '🟢 Bot Diaktifkan' : '🔴 Bot Dimatikan',
+                          subtitle: data.message
+                        });
                         fetchBots();
                       } catch (e) {
-                        alert('❌ Toggle failed: ' + (e.response?.data?.message || e.message));
+                        showToast({
+                          type: 'error',
+                          title: '❌ Gagal Mengubah Status',
+                          subtitle: e.response?.data?.message || e.message
+                        });
+                      } finally {
+                        setTogglingBot(null);
                       }
                     }}
                   >

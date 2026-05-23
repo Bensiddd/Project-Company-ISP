@@ -125,8 +125,21 @@ router.put('/:id', authenticate, async (req, res) => {
 
     await db.logActivity('whatsapp_bot', 'Bot WhatsApp diupdate', `#${req.params.id} ${name}`, req.user.id);
 
-    // Reconnect if provider changed or activated
-    if (is_active) {
+    // Reconnect ONLY if critical connection parameters changed or bot was just enabled
+    const providerChanged = provider !== existing.provider;
+    const phoneChanged = phone_number !== existing.phone_number;
+    const activated = is_active && !existing.is_active;
+    const deactivated = !is_active && existing.is_active;
+
+    if (deactivated) {
+      const { getProvider } = await import('../services/whatsapp/provider-factory.js');
+      const providerInstance = getProvider(existing.provider);
+      try {
+        await providerInstance.disconnect(req.params.id);
+      } catch (err) {
+        console.error('Disconnect failed:', err);
+      }
+    } else if (is_active && (providerChanged || phoneChanged || activated)) {
       const { getProvider } = await import('../services/whatsapp/provider-factory.js');
       const bot = await db.get('SELECT * FROM whatsapp_bots WHERE id=?', [req.params.id]);
       try {
@@ -167,12 +180,50 @@ router.delete('/:id', authenticate, async (req, res) => {
     }
 
     await db.run('DELETE FROM whatsapp_bots WHERE id=?', [req.params.id]);
-    await db.logActivity('whatsapp_bot', 'Bot WhatsApp dihapus', `#${req.params.id} ${bot.name}`, req.user.id);
+     await db.logActivity('whatsapp_bot', 'Bot WhatsApp dihapus', `#${req.params.id} ${bot.name}`, req.user.id);
 
-    res.json({ message: 'Bot deleted successfully' });
+     res.json({ message: 'Bot deleted successfully' });
+   } catch (error) {
+     console.error('Delete WhatsApp bot error:', error);
+     res.status(500).json({ message: 'Failed to delete bot' });
+   }
+});
+
+// Toggle bot active/inactive status without fully updating config
+router.post('/:id/toggle', authenticate, async (req, res) => {
+  try {
+    const bot = await db.get('SELECT * FROM whatsapp_bots WHERE id=?', [req.params.id]);
+    if (!bot) return res.status(404).json({ message: 'Bot not found' });
+
+    const newActive = bot.is_active ? 0 : 1;
+    await db.run(
+      'UPDATE whatsapp_bots SET is_active=?, updated_at=CURRENT_TIMESTAMP WHERE id=?',
+      [newActive, req.params.id]
+    );
+
+    const { getProvider } = await import('../services/whatsapp/provider-factory.js');
+    const providerInstance = getProvider(bot.provider);
+
+    if (newActive === 1) {
+      // Connect bot (Baileys: session-based connect)
+      const freshBot = await db.get('SELECT * FROM whatsapp_bots WHERE id=?', [req.params.id]);
+      await providerInstance.connect(freshBot);
+    } else {
+      // Disconnect bot (preserve session data)
+      await providerInstance.disconnect(bot.id);
+    }
+
+    await db.logActivity(
+      'whatsapp_bot',
+      newActive === 1 ? 'Bot WhatsApp diaktifkan' : 'Bot WhatsApp dimatikan',
+      `#${req.params.id} ${bot.name}`,
+      req.user.id
+    );
+
+    res.json({ id: bot.id, is_active: newActive === 1, message: newActive === 1 ? 'Bot diaktifkan' : 'Bot dimatikan' });
   } catch (error) {
-    console.error('Delete WhatsApp bot error:', error);
-    res.status(500).json({ message: 'Failed to delete bot' });
+    console.error('Toggle WhatsApp bot error:', error);
+    res.status(500).json({ message: error.message || 'Failed to toggle bot status' });
   }
 });
 

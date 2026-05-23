@@ -32,6 +32,17 @@ router.put('/:id', authenticate, async (req, res) => {
   const existing = await db.get('SELECT * FROM tickets WHERE id = ?', [req.params.id]);
   if (!existing) return res.status(404).json({ message: 'Ticket not found' });
   const { status, priority, assigned_to, type } = req.body;
+  
+  // Auto-reset cooldown if ticket is closed or resolved
+  if (status === 'closed' || status === 'resolved') {
+    if (existing.whatsapp_conversation_id) {
+      await db.run('UPDATE whatsapp_conversations SET cooldown_until = NULL WHERE id = ?', [existing.whatsapp_conversation_id]);
+    }
+    if (existing.telegram_conversation_id) {
+      await db.run('UPDATE telegram_conversations SET cooldown_until = NULL WHERE id = ?', [existing.telegram_conversation_id]);
+    }
+  }
+
   const sets = [], vals = [];
   if (status !== undefined) { sets.push('status=?'); vals.push(status); }
   if (priority !== undefined) { sets.push('priority=?'); vals.push(priority); }
@@ -58,12 +69,26 @@ router.delete('/', authenticate, async (req, res) => {
     await db.logActivity('ticket', 'Ticket dihapus', '#' + t.id + ' ' + t.title, req.user?.id);
   }
   await db.run('DELETE FROM tickets');
+  
+  // Clear all cooldowns when all tickets are deleted
+  await db.run('UPDATE whatsapp_conversations SET cooldown_until = NULL');
+  await db.run('UPDATE telegram_conversations SET cooldown_until = NULL');
+
   res.json({ message: 'All tickets deleted successfully', count: tickets.length });
 });
 
 router.delete('/:id', authenticate, async (req, res) => {
-  const existing = await db.get('SELECT id, title FROM tickets WHERE id = ?', [req.params.id]);
+  const existing = await db.get('SELECT id, title, whatsapp_conversation_id, telegram_conversation_id FROM tickets WHERE id = ?', [req.params.id]);
   if (!existing) return res.status(404).json({ message: 'Ticket not found' });
+  
+  // Reset cooldown before deleting ticket
+  if (existing.whatsapp_conversation_id) {
+    await db.run('UPDATE whatsapp_conversations SET cooldown_until = NULL WHERE id = ?', [existing.whatsapp_conversation_id]);
+  }
+  if (existing.telegram_conversation_id) {
+    await db.run('UPDATE telegram_conversations SET cooldown_until = NULL WHERE id = ?', [existing.telegram_conversation_id]);
+  }
+
   await db.logActivity('ticket', 'Ticket dihapus', '#' + existing.id + ' ' + existing.title, req.user?.id);
   await db.run('DELETE FROM tickets WHERE id = ?', [req.params.id]);
   res.json({ message: 'Ticket deleted successfully' });
