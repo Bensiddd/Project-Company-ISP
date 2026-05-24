@@ -1,0 +1,318 @@
+erDiagram
+    %% ============================================
+    %% MAZNET ISP - Entity Relationship Diagram
+    %% Generated: 2026-05-24
+    %% Database: MySQL 8
+    %% ============================================
+
+    %% ──────────── CORE / SETTINGS ────────────
+
+    ADMIN_USERS {
+        int id PK
+        varchar username UK
+        varchar password_hash
+        varchar email UK
+        varchar full_name
+        varchar role "admin | administrator"
+        tinyint is_active
+        timestamp last_login
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    WEBSITE_SETTINGS {
+        int id PK
+        varchar company_name
+        varchar tagline
+        text description
+        text address
+        varchar phone
+        varchar email
+        varchar logo_url
+        varchar favicon_url
+        varchar facebook_url
+        varchar twitter_url
+        varchar instagram_url
+        varchar linkedin_url
+        varchar youtube_url
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    MIKROTIK_SETTINGS {
+        int id PK
+        varchar host
+        varchar username
+        varchar password "AES-GCM encrypted"
+        int port "default 8728"
+        tinyint is_active
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    %% ──────────── ISP SERVICES ────────────
+
+    COVERAGE_AREAS {
+        int id PK
+        varchar name
+        text description
+        tinyint is_active
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    SERVICE_PACKAGES {
+        int id PK
+        varchar name
+        text description
+        varchar type "monthly"
+        decimal price
+        varchar bandwidth
+        text features
+        tinyint is_active
+        tinyint popular
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    %% ──────────── CLIENTS & TESTIMONIALS ────────────
+
+    CLIENTS {
+        int id PK
+        varchar company_name
+        varchar contact_person
+        varchar email
+        varchar phone
+        text address
+        varchar website
+        varchar logo_url
+        varchar industry
+        tinyint is_active
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    TESTIMONIALS {
+        int id PK
+        int client_id FK "nullable → CLIENTS"
+        varchar author_name
+        varchar author_position
+        text content
+        int rating "1-5"
+        tinyint is_approved
+        timestamp published_at
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    %% ──────────── BLOG ────────────
+
+    BLOG_POSTS {
+        int id PK
+        varchar title
+        varchar slug UK
+        text excerpt
+        text content
+        varchar category
+        int author_id FK "→ ADMIN_USERS"
+        varchar status "draft | published"
+        timestamp published_at
+        varchar featured_image_url
+        varchar meta_description
+        varchar read_time
+        text tags "JSON array"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    %% ──────────── CONTACT & MESSAGES ────────────
+
+    CONTACT_MESSAGES {
+        int id PK
+        varchar name
+        varchar email
+        varchar phone
+        varchar whatsapp
+        varchar telegram_chat_id
+        varchar subject
+        text message
+        varchar status "unread | read | replied"
+        int assigned_to FK "→ ADMIN_USERS"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    %% ──────────── TICKETS ────────────
+
+    TICKETS {
+        int id PK
+        int contact_message_id FK "→ CONTACT_MESSAGES"
+        int telegram_conversation_id FK "→ TELEGRAM_CONVERSATIONS"
+        int whatsapp_conversation_id FK "→ WHATSAPP_CONVERSATIONS"
+        varchar source "manual | telegram | whatsapp"
+        varchar type "maintenance | request"
+        varchar status "open | in_progress | resolved | closed"
+        varchar priority "low | medium | high | checking"
+        varchar title
+        text description
+        int assigned_to FK "→ ADMIN_USERS"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    TICKET_REPLIES {
+        int id PK
+        int ticket_id FK "→ TICKETS (CASCADE)"
+        int admin_id FK "→ ADMIN_USERS"
+        text message
+        timestamp created_at
+    }
+
+    %% ──────────── TELEGRAM BOT ────────────
+
+    TELEGRAM_BOTS {
+        int id PK
+        varchar name
+        varchar bot_token
+        varchar admin_chat_id
+        tinyint is_active
+        varchar role "admin"
+        tinyint ai_enabled
+        varchar ai_provider
+        varchar ai_model
+        varchar ai_api_key "AES-GCM encrypted"
+        varchar ai_url
+        text system_prompt
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    TELEGRAM_CONVERSATIONS {
+        int id PK
+        int bot_id FK "→ TELEGRAM_BOTS"
+        text chat_id "unique per bot"
+        text user_name
+        text last_message
+        varchar status "ai | human"
+        int unread
+        text telegram_username
+        text user_phone
+        varchar state "idle | awaiting_* "
+        text pending_data
+        timestamp cooldown_until
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    TELEGRAM_MESSAGES {
+        int id PK
+        int conversation_id FK "→ TELEGRAM_CONVERSATIONS"
+        int bot_id FK "→ TELEGRAM_BOTS"
+        text chat_id
+        text role "user | assistant | admin"
+        text message
+        timestamp created_at
+    }
+
+    %% ──────────── WHATSAPP BOT ────────────
+
+    WHATSAPP_BOTS {
+        int id PK
+        varchar name
+        varchar phone_number
+        varchar provider "baileys | business_api"
+        tinyint is_active
+        varchar role "customer_service"
+        tinyint ai_enabled
+        varchar ai_provider
+        varchar ai_model
+        varchar ai_api_key "AES-GCM encrypted"
+        varchar ai_url
+        text system_prompt
+        text session_data
+        text qr_code
+        varchar status "disconnected | connected"
+        varchar webhook_url
+        varchar api_key "AES-GCM encrypted"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    WHATSAPP_CONVERSATIONS {
+        int id PK
+        int bot_id FK "→ WHATSAPP_BOTS"
+        varchar chat_id "unique per bot"
+        text user_name
+        text last_message
+        varchar status "ai | human"
+        int unread
+        text user_phone
+        varchar state "idle | awaiting_*"
+        text pending_data
+        timestamp cooldown_until
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    WHATSAPP_MESSAGES {
+        int id PK
+        int conversation_id FK "→ WHATSAPP_CONVERSATIONS"
+        int bot_id FK "→ WHATSAPP_BOTS"
+        varchar chat_id
+        text role "user | assistant | admin"
+        text message
+        timestamp created_at
+    }
+
+    %% ──────────── MONITORING & LOGS ────────────
+
+    TRAFFIC_HISTORY {
+        int id PK
+        varchar interface
+        bigint rx
+        bigint tx
+        timestamp sampled_at
+    }
+
+    ACTIVITY_LOGS {
+        int id PK
+        varchar type
+        varchar action
+        text detail
+        int user_id FK "→ ADMIN_USERS"
+        timestamp created_at
+    }
+
+    %% ============================================
+    %% RELATIONSHIPS
+    %% ============================================
+
+    %% Clients & Testimonials
+    CLIENTS ||--o{ TESTIMONIALS : "has"
+
+    %% Blog
+    ADMIN_USERS ||--o{ BLOG_POSTS : "authors"
+
+    %% Contact Messages
+    ADMIN_USERS ||--o{ CONTACT_MESSAGES : "assigned_to"
+
+    %% Tickets
+    CONTACT_MESSAGES ||--o{ TICKETS : "generates"
+    ADMIN_USERS ||--o{ TICKETS : "assigned_to"
+    TELEGRAM_CONVERSATIONS ||--o{ TICKETS : "creates"
+    WHATSAPP_CONVERSATIONS ||--o{ TICKETS : "creates"
+    TICKETS ||--o{ TICKET_REPLIES : "has"
+    ADMIN_USERS ||--o{ TICKET_REPLIES : "replies"
+
+    %% Telegram
+    TELEGRAM_BOTS ||--o{ TELEGRAM_CONVERSATIONS : "owns"
+    TELEGRAM_CONVERSATIONS ||--o{ TELEGRAM_MESSAGES : "contains"
+    TELEGRAM_BOTS ||--o{ TELEGRAM_MESSAGES : "bot_id"
+
+    %% WhatsApp
+    WHATSAPP_BOTS ||--o{ WHATSAPP_CONVERSATIONS : "owns"
+    WHATSAPP_CONVERSATIONS ||--o{ WHATSAPP_MESSAGES : "contains"
+    WHATSAPP_BOTS ||--o{ WHATSAPP_MESSAGES : "bot_id"
+
+    %% Activity Logs
+    ADMIN_USERS ||--o{ ACTIVITY_LOGS : "performs"
