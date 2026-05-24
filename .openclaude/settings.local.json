@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node ../fix-duplicate-sessions.js)",
+      "Bash(npm install:*)",
+      "Bash(npm uninstall:*)"
+    ]
+  }
+}
