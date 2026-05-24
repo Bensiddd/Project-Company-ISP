@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiChartBar, HiUsers, HiPencilAlt, HiChip, HiGlobe, HiBriefcase, HiCog, HiMail, HiGlobe as HiGlobeLogo, HiClipboardList, HiChatAlt2, HiLogout, HiChevronDown, HiShieldCheck, HiInbox, HiServer } from 'react-icons/hi';
+import { HiChartBar, HiUsers, HiPencilAlt, HiChip, HiGlobe, HiBriefcase, HiCog, HiMail, HiGlobe as HiGlobeLogo, HiClipboardList, HiChatAlt2, HiLogout, HiChevronDown, HiShieldCheck, HiInbox, HiServer, HiCurrencyDollar, HiDocumentText } from 'react-icons/hi';
 import AdminOverview from './AdminOverview';
 import AdminUsers from './AdminUsers';
 import BlogPosts from './BlogPosts';
@@ -17,6 +17,10 @@ import TelegramBots from './TelegramBots';
 import WhatsAppBots from './WhatsAppBots';
 import WhatsAppMessages from './WhatsAppMessages';
 import MikrotikMonitor from './MikrotikMonitor';
+import Invoices from './Invoices';
+import Subscriptions from './Subscriptions';
+import Payments from './Payments';
+import PaymentSettings from './PaymentSettings';
 
 const routeRoles = {
   '/admin': ['administrator', 'admin', 'teknisi'],
@@ -32,7 +36,11 @@ const routeRoles = {
   '/admin/whatsapp-bots': ['administrator'],
   '/admin/whatsapp-messages': ['administrator', 'cs'],
   '/admin/settings': ['administrator', 'admin'],
-  '/admin/network': ['administrator']
+  '/admin/network': ['administrator'],
+  '/admin/invoices': ['administrator', 'admin', 'teknisi'],
+  '/admin/subscriptions': ['administrator', 'admin'],
+  '/admin/payments': ['administrator', 'admin', 'cs'],
+  '/admin/payment-settings': ['administrator']
 };
 
 const allNavItems = [
@@ -49,7 +57,12 @@ const allNavItems = [
   { path: '/admin/whatsapp-bots', label: 'WhatsApp Bots', icon: HiChatAlt2, roles: ['administrator'] },
   { path: '/admin/whatsapp-messages', label: 'WhatsApp Messages', icon: HiMail, roles: ['administrator', 'cs'] },
   { path: '/admin/settings', label: 'Website Settings', icon: HiCog, roles: ['administrator', 'admin'] },
-  { path: '/admin/network', label: 'Network Monitor', icon: HiServer, roles: ['administrator'] }
+  { path: '/admin/network', label: 'Network Monitor', icon: HiServer, roles: ['administrator'] },
+  // ── Billing ──
+  { path: '/admin/invoices', label: 'Invoices', icon: HiDocumentText, roles: ['administrator', 'admin', 'teknisi'] },
+  { path: '/admin/subscriptions', label: 'Subscriptions', icon: HiChip, roles: ['administrator', 'admin'] },
+  { path: '/admin/payments', label: 'Payments', icon: HiCurrencyDollar, roles: ['administrator', 'admin', 'cs'] },
+  { path: '/admin/payment-settings', label: 'Payment Settings', icon: HiCog, roles: ['administrator'] }
 ];
 
 const roleConfig = {
@@ -200,6 +213,10 @@ const AdminDashboard = () => {
             <Route path="whatsapp-bots" element={<WhatsAppBots />} />
             <Route path="whatsapp-messages" element={<WhatsAppMessages />} />
             <Route path="network" element={<MikrotikMonitor />} />
+            <Route path="invoices" element={<Invoices />} />
+            <Route path="subscriptions" element={<Subscriptions />} />
+            <Route path="payments" element={<Payments />} />
+            <Route path="payment-settings" element={<PaymentSettings />} />
           </Routes>
         </main>
       </div>

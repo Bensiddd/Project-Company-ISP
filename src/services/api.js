@@ -211,4 +211,40 @@ export const whatsappConversationsAPI = {
   delete: (id) => api.delete(`/whatsapp-conversations/${id}`)
 };
 
+// ── Billing & Payment endpoints ──────────────────────────────────────────
+
+export const invoicesAPI = {
+  getAll: (params) => api.get('/invoices', { params }),
+  getById: (id) => api.get(`/invoices/${id}`),
+  create: (data) => api.post('/invoices', data),
+  cancel: (id) => api.put(`/invoices/${id}/cancel`),
+  getPdf: (id) => api.get(`/invoices/${id}/pdf`, { responseType: 'blob' }),
+  generateMonthly: () => api.post('/invoices/generate-monthly')
+};
+
+export const subscriptionsAPI = {
+  getAll: () => api.get('/subscriptions'),
+  getById: (id) => api.get(`/subscriptions/${id}`),
+  create: (data) => api.post('/subscriptions', data),
+  update: (id, data) => api.put(`/subscriptions/${id}`, data),
+  suspend: (id) => api.put(`/subscriptions/${id}/suspend`),
+  activate: (id) => api.put(`/subscriptions/${id}/activate`),
+  terminate: (id, reason) => api.put(`/subscriptions/${id}/terminate`, { reason })
+};
+
+export const paymentsAPI = {
+  getAll: (params) => api.get('/payments', { params }),
+  getById: (id) => api.get(`/payments/${id}`),
+  midtransCharge: (invoiceId, paymentMethod) =>
+    api.post('/payments/midtrans-charge', { invoice_id: invoiceId, payment_method: paymentMethod }),
+  manualPayment: (data) => api.post('/payments/manual', data),
+  verify: (id) => api.put(`/payments/${id}/verify`)
+};
+
+export const paymentSettingsAPI = {
+  get: () => api.get('/payment-settings'),
+  update: (data) => api.put('/payment-settings', data),
+  test: (data) => api.post('/payment-settings/test', data)
+};
+
 export default api;
