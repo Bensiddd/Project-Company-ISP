@@ -5,10 +5,12 @@ import { generateToken, authenticate } from '../middleware/auth.js';
 
 const router = Router();
 
+
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ message: 'Email and password are required' });
-  const user = await db.get('SELECT * FROM admin_users WHERE email = ? AND is_active = 1', [email]);
+  // Allow login with email or username (case-insensitive)
+  const user = await db.get('SELECT * FROM admin_users WHERE (LOWER(email) = LOWER(?) OR LOWER(username) = LOWER(?)) AND is_active = 1', [email, email]);
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
     return res.status(401).json({ message: 'Invalid email or password' });
   }
