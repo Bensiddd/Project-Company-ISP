@@ -1,29 +1,32 @@
-version: '3'
-services:
-  mysql:
-    image: mysql:8
-    container_name: maznet-mysql
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: maznet
-    ports:
-      - "127.0.0.1:3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      timeout: 10s
-      retries: 5
-  phpmyadmin:
-    image: phpmyadmin
-    container_name: maznet-phpmyadmin
-    ports:
-      - "127.0.0.1:8080:80"
-    environment:
-      PMA_HOST: mysql
-      UPLOAD_LIMIT: 100M
-    depends_on:
-      mysql:
-        condition: service_healthy
-volumes:
-  mysql_data:
+# MySQL & phpMyAdmin migrated to WSL native (2026-05-25)
+# Keep for reference — services now run via WSL MariaDB at 127.0.0.1:3306
+#
+# version: '3'
+# services:
+#   mysql:
+#     image: mysql:8
+#     container_name: maznet-mysql
+#     environment:
+#       MYSQL_ROOT_PASSWORD: root
+#       MYSQL_DATABASE: maznet
+#     ports:
+#       - "127.0.0.1:3306:3306"
+#     volumes:
+#       - mysql_data:/var/lib/mysql
+#     healthcheck:
+#       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+#       timeout: 10s
+#       retries: 5
+#   phpmyadmin:
+#     image: phpmyadmin
+#     container_name: maznet-phpmyadmin
+#     ports:
+#       - "127.0.0.1:8080:80"
+#     environment:
+#       PMA_HOST: mysql
+#       UPLOAD_LIMIT: 100M
+#     depends_on:
+#       mysql:
+#         condition: service_healthy
+# volumes:
+#   mysql_data:
