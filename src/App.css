@@ -490,19 +490,43 @@ select.form-control { cursor: pointer; appearance: auto; }
 .settings-footer { display: flex; align-items: center; gap: 12px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--border); }
 .settings-footer .btn { margin-left: auto; min-width: 160px; }
 
-/* ── Responsive ── */
-@media (max-width: 1024px) {
-  .admin-container { flex-direction: column; }
-  .admin-sidebar { width: 100%; position: relative; height: auto; border-right: none; border-bottom: 1px solid var(--border); padding: 16px; }
-  .admin-sidebar nav { margin: 0; }
-  .admin-charts { grid-template-columns: 1fr; }
-  .messages-layout { flex-direction: column; }
-  .messages-list { width: 100%; border-right: none; border-bottom: 1px solid var(--border); max-height: 300px; }
-  .hidden-mobile { display: none; }
-  .admin-main { padding: 16px; }
+/* ── Mobile Sidebar (≤768px) ── */
+.admin-sidebar-toggle {
+  display: none;
+  width: 38px; height: 38px;
+  align-items: center; justify-content: center;
+  border-radius: 8px; border: 1px solid var(--border);
+  background: var(--bg-card); color: var(--text-secondary);
+  cursor: pointer; font-size: 18px; margin-right: 12px;
+  transition: var(--transition);
+}
+.admin-sidebar-toggle:hover { background: var(--bg-elevated); color: var(--text-primary); }
+
+.admin-sidebar-backdrop {
+  display: none;
+  position: fixed; inset: 0; z-index: 90;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(2px);
 }
 
 @media (max-width: 768px) {
+  .admin-sidebar-toggle { display: flex; }
+  .admin-sidebar-backdrop.show { display: block; }
+
+  .admin-container { flex-direction: row; }
+
+  .admin-sidebar {
+    position: fixed; top: 0; left: 0; z-index: 100;
+    width: 260px; height: 100vh;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+  }
+  .admin-sidebar.open { transform: translateX(0); }
+
+  .admin-sidebar-header { padding: 16px 16px 12px; }
+  .admin-main { padding: 16px; }
   .admin-header { flex-direction: column; align-items: flex-start; gap: 12px; }
   .form-row { grid-template-columns: 1fr; }
   .service-grid { grid-template-columns: 1fr; }
@@ -514,4 +538,10 @@ select.form-control { cursor: pointer; appearance: auto; }
   .data-table-search { max-width: none; }
   .data-table-header { flex-direction: column; align-items: flex-start; gap: 12px; }
   .message-detail-meta { flex-direction: column; gap: 8px; }
+}
+
+@media (max-width: 480px) {
+  .admin-stats { grid-template-columns: 1fr; }
+  .admin-topbar { gap: 8px; }
+  .admin-main { padding: 12px; }
 }

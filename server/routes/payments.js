@@ -154,9 +154,9 @@ router.post('/midtrans-charge', authenticate, async (req, res) => {
     );
 
     let message = 'Gagal membuat pembayaran.';
-    if (httpStatus === 401) {
+    if (String(httpStatus) === '401') {
       message = 'Midtrans authentication gagal — server key tidak valid. Cek Payment Settings.';
-    } else if (httpStatus === 404) {
+    } else if (String(httpStatus) === '404') {
       message = 'Midtrans merchant tidak ditemukan. Cek Merchant ID & server key di Payment Settings.';
     }
 
@@ -329,11 +329,27 @@ router.post('/public-charge/:token', async (req, res) => {
     const httpStatus = error.httpStatusCode || error.statusCode || (
       /HTTP status code: (\d+)/.exec(error.message)?.[1]
     );
-    let message = 'Gagal membuat pembayaran.';
-    if (httpStatus === 401) message = 'Midtrans authentication gagal. Hubungi admin.';
-    else if (httpStatus === 404) message = 'Konfigurasi Midtrans tidak valid. Hubungi admin.';
-    res.status(500).json({ message, error: error.message });
+    let message = 'Pembayaran belum bisa diproses.';
+    if (String(httpStatus) === '401') message = 'Konfigurasi pembayaran Midtrans belum valid — server key tidak dikenali. Hubungi admin MAZNET.';
+    else if (String(httpStatus) === '404') message = 'Konfigurasi Midtrans tidak ditemukan. Hubungi admin MAZNET.';
+    else if (error.ApiResponse) message = 'Pembayaran gagal diproses oleh Midtrans. Silakan coba lagi nanti.';
+    res.status(httpStatus === '401' || httpStatus === '404' ? 400 : 500).json({ message });
   }
+});
+
+// Delete all payments
+router.delete('/', authenticate, async (_req, res) => {
+  const count = await db.get('SELECT COUNT(*) as cnt FROM payments');
+  await db.run('DELETE FROM payments');
+  res.json({ message: `${count.cnt} payment(s) deleted` });
+});
+
+// Delete payment by id
+router.delete('/:id', authenticate, async (req, res) => {
+  const existing = await db.get('SELECT id FROM payments WHERE id = ?', [req.params.id]);
+  if (!existing) return res.status(404).json({ message: 'Payment not found' });
+  await db.run('DELETE FROM payments WHERE id = ?', [req.params.id]);
+  res.json({ message: 'Payment deleted' });
 });
 
 export default router;

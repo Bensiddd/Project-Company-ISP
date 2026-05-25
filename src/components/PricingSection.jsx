@@ -22,12 +22,21 @@ const formatPrice = (num) => 'Rp' + Math.round(num).toLocaleString('id-ID');
 const PricingSection = () => {
   const [isAnnual, setIsAnnual] = useState(false);
   const [packages, setPackages] = useState([]);
+  const [pkgLoading, setPkgLoading] = useState(true);
+  const [pkgError, setPkgError] = useState(null);
 
-  useEffect(() => {
+  const fetchPackages = () => {
+    setPkgLoading(true);
+    setPkgError(null);
     servicePackagesAPI.getAll().then(({ data }) => {
       setPackages(data.filter(p => p.is_active));
-    }).catch(console.error);
-  }, []);
+    }).catch(err => {
+      console.error('Pricing load failed:', err);
+      setPkgError('Gagal memuat paket. Periksa koneksi atau coba lagi.');
+    }).finally(() => setPkgLoading(false));
+  };
+
+  useEffect(() => { fetchPackages(); }, []);
 
   return (
     <section className="section" id="pricing">
@@ -65,8 +74,32 @@ const PricingSection = () => {
           whileInView="visible"
           viewport={{ once: true, margin: '-50px' }}
         >
-          {packages.map(pkg => {
-            return (
+          {pkgLoading ? (
+            [1, 2, 3].map(i => (
+              <div key={i} className="pricing-card pricing-skeleton">
+                <div className="pricing-header">
+                  <div className="skeleton-line medium" style={{ margin: '0 auto 16px' }} />
+                  <div className="skeleton-line short" style={{ margin: '0 auto' }} />
+                </div>
+                <div className="pricing-features">
+                  <div className="skeleton-line long" />
+                  <div className="skeleton-line long" />
+                  <div className="skeleton-line medium" />
+                </div>
+                <div className="skeleton-line long" style={{ height: 44 }} />
+              </div>
+            ))
+          ) : pkgError ? (
+            <div className="pricing-error" style={{ gridColumn: '1 / -1' }}>
+              <p>{pkgError}</p>
+              <button className="btn btn-primary" onClick={fetchPackages}>Coba Lagi</button>
+            </div>
+          ) : packages.length === 0 ? (
+            <div className="pricing-empty" style={{ gridColumn: '1 / -1' }}>
+              <p>Belum ada paket tersedia.</p>
+            </div>
+          ) : (
+            packages.map(pkg => (
               <motion.div
                 key={pkg.id}
                 className={`pricing-card ${pkg.popular ? 'popular' : ''}`}
@@ -111,8 +144,8 @@ const PricingSection = () => {
                   </a>
                 )}
               </motion.div>
-            );
-          })}
+            ))
+          )}
         </motion.div>
       </div>
 
@@ -172,6 +205,7 @@ const PricingSection = () => {
           transition: var(--transition);
         }
         .pricing-card.popular { border-color: var(--primary); background: var(--gradient-card); }
+        .pricing-skeleton { pointer-events: none; min-height: 380px; }
         .popular-badge {
           position: absolute;
           top: -12px;
@@ -204,6 +238,22 @@ const PricingSection = () => {
         .feature-value { font-size: 13px; font-weight: 600; color: var(--text-primary); }
         .pricing-feature { display: flex; align-items: center; gap: 10px; padding: 8px 0; font-size: 14px; color: var(--text-secondary); }
         .check-icon { color: var(--success); flex-shrink: 0; font-size: 16px; }
+
+        .pricing-error, .pricing-empty { text-align: center; padding: 48px 24px; color: var(--text-secondary); }
+        .pricing-error p { font-size: 15px; margin-bottom: 16px; color: var(--text-muted); }
+        .pricing-empty p { font-size: 15px; color: var(--text-muted); }
+
+        .skeleton-line {
+          height: 14px;
+          border-radius: 6px;
+          background: linear-gradient(90deg, var(--bg-elevated) 25%, var(--border) 50%, var(--bg-elevated) 75%);
+          background-size: 200% 100%;
+          animation: shimmer 1.5s infinite;
+        }
+        .skeleton-line.short { width: 40%; }
+        .skeleton-line.medium { width: 60%; }
+        .skeleton-line.long { width: 90%; }
+
         @media (max-width: 1024px) { .pricing-grid { grid-template-columns: 1fr; max-width: 480px; margin: 0 auto; } }
       `}</style>
     </section>

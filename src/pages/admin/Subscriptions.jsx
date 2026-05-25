@@ -4,9 +4,10 @@ import FormModal from '../../components/FormModal';
 import {
   HiRefresh, HiPlus, HiEye, HiBan, HiCheckCircle,
   HiX, HiCalendar, HiUser, HiChip, HiStop,
-  HiExclamationCircle, HiClock, HiPlay
+  HiExclamationCircle, HiClock, HiPlay, HiTrash, HiOutlineTrash
 } from 'react-icons/hi';
 import { subscriptionsAPI, clientsAPI, servicePackagesAPI } from '../../services/api';
+import { useToast } from '../../components/Toast';
 import './Billing.css';
 
 const formatIDR = (num) => `Rp${Number(num || 0).toLocaleString('id-ID')}`;
@@ -34,6 +35,8 @@ const Subscriptions = () => {
   const [saving, setSaving] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
   const [confirmAction, setConfirmAction] = useState(null);
+  const { showToast } = useToast();
+  const [confirmDel, setConfirmDel] = useState(null);
 
   const fetchSubscriptions = useCallback(async () => {
     try {
@@ -100,6 +103,30 @@ const Subscriptions = () => {
     } catch (e) { console.error(e); }
   };
 
+  const handleDelete = async (id) => {
+    setConfirmDel({ id, single: true });
+  };
+
+  const executeDelete = async () => {
+    if (!confirmDel) return;
+    setConfirmDel(null);
+    try {
+      if (confirmDel.single) {
+        await subscriptionsAPI.delete(confirmDel.id);
+        setSubscriptions(prev => prev.filter(s => s.id !== confirmDel.id));
+        showToast({ title: 'Subscription dihapus.', type: 'success' });
+      } else {
+        const { data } = await subscriptionsAPI.deleteAll();
+        setSubscriptions([]);
+        showToast({ title: data.message, type: 'success' });
+      }
+    } catch (e) { showToast({ title: 'Gagal hapus', subtitle: e.response?.data?.message || e.message, type: 'error' }); }
+  };
+
+  const handleDeleteAll = async () => {
+    setConfirmDel({ single: false });
+  };
+
   const filtered = subscriptions.filter(s => {
     if (statusFilter && s.status !== statusFilter) return false;
     return true;
@@ -124,9 +151,14 @@ const Subscriptions = () => {
           <h1>Subscriptions <span className="billing-count">({subscriptions.length})</span></h1>
           <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Manage client service subscriptions</span>
         </div>
-        <button className="btn btn-primary" onClick={() => { setEditing(null); setForm(initialForm); setShowForm(true); }}>
-          <HiPlus /> New Subscription
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn btn-danger btn-sm" onClick={handleDeleteAll} title="Delete all subscriptions">
+            <HiOutlineTrash /> Delete All
+          </button>
+          <button className="btn btn-primary" onClick={() => { setEditing(null); setForm(initialForm); setShowForm(true); }}>
+            <HiPlus /> New Subscription
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -219,6 +251,9 @@ const Subscriptions = () => {
                   <HiBan size={14} /> Terminate
                 </button>
               )}
+              <button className="btn btn-ghost btn-sm" style={{ color: 'var(--error)' }} onClick={() => handleDelete(sub.id)}>
+                <HiTrash size={14} /> Delete
+              </button>
             </div>
           </motion.div>
         ))}
@@ -332,6 +367,31 @@ const Subscriptions = () => {
           <input type="date" className="form-control" value={form.start_date} onChange={e => setForm({...form, start_date: e.target.value})} required />
         </div>
       </FormModal>
+
+      {/* Confirm Delete Dialog */}
+      <AnimatePresence>
+        {confirmDel && (
+          <motion.div className="confirm-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setConfirmDel(null)}>
+            <motion.div className="confirm-dialog" initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
+              onClick={e => e.stopPropagation()}>
+              <div className="confirm-header danger">
+                <HiExclamationCircle size={24} />
+                <h3>{confirmDel.single ? 'Hapus Subscription' : 'Hapus Semua Subscription'}</h3>
+              </div>
+              <p>
+                {confirmDel.single
+                  ? 'Yakin ingin menghapus subscription ini? Data yang dihapus tidak bisa dikembalikan.'
+                  : '⚠️ Yakin ingin menghapus SEMUA subscription? Seluruh data akan hilang permanen dan tidak bisa dikembalikan.'}
+              </p>
+              <div className="confirm-actions">
+                <button className="btn btn-secondary" onClick={() => setConfirmDel(null)}>Batal</button>
+                <button className="btn btn-danger" onClick={executeDelete}>Ya, Hapus</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Confirm Action Dialog */}
       <AnimatePresence>

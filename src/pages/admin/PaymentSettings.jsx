@@ -6,9 +6,19 @@ import {
   HiSave, HiEye, HiEyeOff
 } from 'react-icons/hi';
 import { paymentSettingsAPI } from '../../services/api';
+import { useToast } from '../../components/Toast';
 import './Billing.css';
 
+const parseMaybeJson = (value, fallback) => {
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string' && value.trim()) {
+    try { return JSON.parse(value); } catch { return fallback; }
+  }
+  return fallback;
+};
+
 const PaymentSettings = () => {
+  const { showToast } = useToast();
   const [settings, setSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -32,16 +42,14 @@ const PaymentSettings = () => {
       if (data) {
         setSettings(data);
         setForm({
-          is_sandbox: data.is_sandbox !== undefined ? data.is_sandbox : true,
+          is_sandbox: data.is_sandbox !== undefined ? Boolean(Number(data.is_sandbox)) : true,
           merchant_id: data.merchant_id || '',
           client_key: data.client_key || '',
           server_key: data.server_key || '',
-          payment_channels: data.payment_channels || ['gopay', 'bank_transfer', 'credit_card'],
+          payment_channels: parseMaybeJson(data.payment_channels, ['gopay', 'bank_transfer', 'credit_card']),
           invoice_prefix: data.invoice_prefix || 'INV',
           payment_due_days: data.payment_due_days || 14,
-          bank_accounts: data.bank_accounts && data.bank_accounts.length > 0
-            ? data.bank_accounts
-            : [{ bank: 'BCA', account_number: '', account_name: '' }],
+          bank_accounts: parseMaybeJson(data.bank_accounts, [{ bank: 'BCA', account_number: '', account_name: '' }]),
         });
       }
     } catch (err) { console.error('Failed fetch payment settings:', err); }
@@ -79,7 +87,10 @@ const PaymentSettings = () => {
     try {
       const { data } = await paymentSettingsAPI.update(form);
       setSettings(data);
-    } catch (e) { console.error(e); }
+      showToast({ title: 'Payment settings tersimpan.', type: 'success' });
+    } catch (e) {
+      showToast({ title: 'Gagal simpan settings', subtitle: e.response?.data?.message || e.message, type: 'error' });
+    }
     finally { setSaving(false); }
   };
 
@@ -88,9 +99,11 @@ const PaymentSettings = () => {
     setTestResult(null);
     try {
       const { data } = await paymentSettingsAPI.test({ server_key: form.server_key, is_sandbox: form.is_sandbox });
-      setTestResult({ success: true, message: data.message || 'Midtrans connection successful!' });
+      // Backend now always returns 200 with success field
+      setTestResult({ success: data.success !== false, message: data.message || 'Koneksi Midtrans berhasil.' });
     } catch (e) {
-      setTestResult({ success: false, message: e.response?.data?.message || e.message || 'Test failed' });
+      // Network/axios error (not auth error since backend returns 200)
+      setTestResult({ success: false, message: 'Gagal menghubungi server. Coba lagi.' });
     }
     finally { setTestLoading(false); }
   };
@@ -178,7 +191,7 @@ const PaymentSettings = () => {
               <input type={showKeys.client_key ? 'text' : 'password'} className="form-control"
                 value={form.client_key}
                 onChange={e => setForm({...form, client_key: e.target.value})}
-                placeholder="SB-Mid-client-xxxx" style={{ paddingRight: 40 }} />
+                placeholder="Mid-client-xxxx" style={{ paddingRight: 40 }} />
               <button className="btn btn-ghost btn-sm" style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)' }}
                 onClick={() => toggleShowKey('client_key')}>
                 {showKeys.client_key ? <HiEyeOff size={14} /> : <HiEye size={14} />}
@@ -191,7 +204,7 @@ const PaymentSettings = () => {
               <input type={showKeys.server_key ? 'text' : 'password'} className="form-control"
                 value={form.server_key}
                 onChange={e => setForm({...form, server_key: e.target.value})}
-                placeholder="SB-Mid-server-xxxx" style={{ paddingRight: 40 }} />
+                placeholder="Mid-server-xxxx" style={{ paddingRight: 40 }} />
               <button className="btn btn-ghost btn-sm" style={{ position: 'absolute', right: 4, top: '50%', transform: 'translateY(-50%)' }}
                 onClick={() => toggleShowKey('server_key')}>
                 {showKeys.server_key ? <HiEyeOff size={14} /> : <HiEye size={14} />}

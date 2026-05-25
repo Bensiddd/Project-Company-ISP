@@ -11,6 +11,8 @@ import BlogDetail from './pages/BlogDetail';
 import Contact from './pages/Contact';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import PayInvoice from './pages/PayInvoice';
+import PaymentResult from './pages/PaymentResult';
 import AdminDashboard from './pages/admin/Dashboard';
 import ErrorBoundary from './components/ErrorBoundary';
 import { ToastProvider } from './components/Toast';
@@ -34,6 +36,8 @@ function AppContent() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/pay/:token" element={<PayInvoice />} />
+          <Route path="/payment-result" element={<PaymentResult />} />
           <Route path="/admin/*" element={<ErrorBoundary><AdminDashboard /></ErrorBoundary>} />
         </Routes>
       </main>

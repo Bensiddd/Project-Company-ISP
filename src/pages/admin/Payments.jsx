@@ -4,9 +4,10 @@ import FormModal from '../../components/FormModal';
 import {
   HiCurrencyDollar, HiFilter, HiSearch, HiEye, HiX,
   HiCheckCircle, HiRefresh, HiCash, HiCreditCard,
-  HiClock, HiExclamationCircle, HiExternalLink
+  HiClock, HiExclamationCircle, HiExternalLink, HiTrash, HiOutlineTrash
 } from 'react-icons/hi';
 import { paymentsAPI, invoicesAPI } from '../../services/api';
+import { useToast } from '../../components/Toast';
 import './Billing.css';
 
 const formatIDR = (num) => `Rp${Number(num || 0).toLocaleString('id-ID')}`;
@@ -41,6 +42,8 @@ const Payments = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [methodFilter, setMethodFilter] = useState('');
   const [search, setSearch] = useState('');
+  const { showToast } = useToast();
+  const [confirmDel, setConfirmDel] = useState(null);
 
   const fetchPayments = useCallback(async () => {
     try {
@@ -107,6 +110,30 @@ const Payments = () => {
     } catch (e) { console.error(e); }
   };
 
+  const handleDelete = async (id) => {
+    setConfirmDel({ id, single: true });
+  };
+
+  const executeDelete = async () => {
+    if (!confirmDel) return;
+    setConfirmDel(null);
+    try {
+      if (confirmDel.single) {
+        await paymentsAPI.delete(confirmDel.id);
+        setPayments(prev => prev.filter(p => p.id !== confirmDel.id));
+        showToast({ title: 'Payment dihapus.', type: 'success' });
+      } else {
+        const { data } = await paymentsAPI.deleteAll();
+        setPayments([]);
+        showToast({ title: data.message, type: 'success' });
+      }
+    } catch (e) { showToast({ title: 'Gagal hapus', subtitle: e.response?.data?.message || e.message, type: 'error' }); }
+  };
+
+  const handleDeleteAll = async () => {
+    setConfirmDel({ single: false });
+  };
+
   const getAmount = (p) => parseFloat(p.amount || p.gross_amount || 0);
 
   const totalCollected = payments
@@ -132,9 +159,14 @@ const Payments = () => {
           <h1>Payments <span className="billing-count">({payments.length})</span></h1>
           <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Track all payments — Midtrans & manual</span>
         </div>
-        <button className="btn btn-primary" onClick={() => { setForm(initialManualForm); fetchInvoices(); setShowManualForm(true); }}>
-          <HiCash /> Record Manual Payment
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn btn-danger btn-sm" onClick={handleDeleteAll} title="Delete all payments">
+            <HiOutlineTrash /> Delete All
+          </button>
+          <button className="btn btn-primary" onClick={() => { setForm(initialManualForm); fetchInvoices(); setShowManualForm(true); }}>
+            <HiCash /> Record Manual Payment
+          </button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -243,6 +275,9 @@ const Payments = () => {
                         )}
                       </>
                     )}
+                    <button className="btn btn-ghost btn-sm" title="Delete Payment" onClick={() => handleDelete(p.id)}>
+                      <HiTrash size={15} style={{ color: 'var(--error)' }} />
+                    </button>
                   </div>
                 </td>
               </motion.tr>
@@ -391,6 +426,31 @@ const Payments = () => {
             onChange={e => setForm({...form, notes: e.target.value})} />
         </div>
       </FormModal>
+
+      {/* Confirm Delete Dialog */}
+      <AnimatePresence>
+        {confirmDel && (
+          <motion.div className="confirm-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setConfirmDel(null)}>
+            <motion.div className="confirm-dialog" initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
+              onClick={e => e.stopPropagation()}>
+              <div className="confirm-header danger">
+                <HiExclamationCircle size={24} />
+                <h3>{confirmDel.single ? 'Hapus Payment' : 'Hapus Semua Payment'}</h3>
+              </div>
+              <p>
+                {confirmDel.single
+                  ? 'Yakin ingin menghapus payment ini? Data yang dihapus tidak bisa dikembalikan.'
+                  : '⚠️ Yakin ingin menghapus SEMUA payment? Seluruh data akan hilang permanen dan tidak bisa dikembalikan.'}
+              </p>
+              <div className="confirm-actions">
+                <button className="btn btn-secondary" onClick={() => setConfirmDel(null)}>Batal</button>
+                <button className="btn btn-danger" onClick={executeDelete}>Ya, Hapus</button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

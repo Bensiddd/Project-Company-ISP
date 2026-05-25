@@ -83,3 +83,20 @@ router.put('/:id/terminate', authenticate, async (req, res) => {
   const sub = await db.get('SELECT * FROM subscriptions WHERE id = ?', [req.params.id]);
   res.json(sub);
 });
+
+// Delete all subscriptions
+router.delete('/', authenticate, async (_req, res) => {
+  const count = await db.get('SELECT COUNT(*) as cnt FROM subscriptions');
+  await db.run('DELETE FROM subscriptions');
+  res.json({ message: `${count.cnt} subscription(s) deleted` });
+});
+
+// Delete subscription by id
+router.delete('/:id', authenticate, async (req, res) => {
+  const existing = await db.get('SELECT id FROM subscriptions WHERE id = ?', [req.params.id]);
+  if (!existing) return res.status(404).json({ message: 'Subscription not found' });
+  await db.run('DELETE FROM subscriptions WHERE id = ?', [req.params.id]);
+  res.json({ message: 'Subscription deleted' });
+});
+
+export default router;

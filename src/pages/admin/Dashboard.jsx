@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, Link, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { HiChartBar, HiUsers, HiPencilAlt, HiChip, HiGlobe, HiBriefcase, HiCog, HiMail, HiGlobe as HiGlobeLogo, HiClipboardList, HiChatAlt2, HiLogout, HiChevronDown, HiShieldCheck, HiInbox, HiServer, HiCurrencyDollar, HiDocumentText } from 'react-icons/hi';
+import { HiChartBar, HiUsers, HiPencilAlt, HiChip, HiGlobe, HiBriefcase, HiCog, HiMail, HiGlobe as HiGlobeLogo, HiClipboardList, HiChatAlt2, HiLogout, HiChevronDown, HiShieldCheck, HiInbox, HiServer, HiCurrencyDollar, HiDocumentText, HiMenu, HiX } from 'react-icons/hi';
 import AdminOverview from './AdminOverview';
 import AdminUsers from './AdminUsers';
 import BlogPosts from './BlogPosts';
@@ -40,7 +40,7 @@ const routeRoles = {
   '/admin/invoices': ['administrator', 'admin', 'teknisi'],
   '/admin/subscriptions': ['administrator', 'admin'],
   '/admin/payments': ['administrator', 'admin', 'cs'],
-  '/admin/payment-settings': ['administrator']
+  '/admin/payment-settings': ['administrator', 'admin']
 };
 
 const allNavItems = [
@@ -62,7 +62,7 @@ const allNavItems = [
   { path: '/admin/invoices', label: 'Invoices', icon: HiDocumentText, roles: ['administrator', 'admin', 'teknisi'] },
   { path: '/admin/subscriptions', label: 'Subscriptions', icon: HiChip, roles: ['administrator', 'admin'] },
   { path: '/admin/payments', label: 'Payments', icon: HiCurrencyDollar, roles: ['administrator', 'admin', 'cs'] },
-  { path: '/admin/payment-settings', label: 'Payment Settings', icon: HiCog, roles: ['administrator'] }
+  { path: '/admin/payment-settings', label: 'Payment Settings', icon: HiCog, roles: ['administrator', 'admin'] }
 ];
 
 const roleConfig = {
@@ -78,6 +78,7 @@ const AdminDashboard = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const dropdownRef = useRef(null);
 
   let currentUser = {};
@@ -113,8 +114,9 @@ const AdminDashboard = () => {
 
   return (
     <div className="admin-dashboard">
+      <div className={`admin-sidebar-backdrop ${sidebarOpen ? 'show' : ''}`} onClick={() => setSidebarOpen(false)} />
       <div className="admin-container">
-        <aside className="admin-sidebar">
+        <aside className={`admin-sidebar ${sidebarOpen ? 'open' : ''}`}>
           <div className="admin-sidebar-header">
             <div className="admin-sidebar-logo">
               <HiGlobeLogo size={20} />
@@ -142,6 +144,9 @@ const AdminDashboard = () => {
         <main className="admin-main">
           <div className="admin-topbar">
             <div className="admin-topbar-left">
+              <button className="admin-sidebar-toggle" onClick={() => setSidebarOpen(!sidebarOpen)}>
+                {sidebarOpen ? <HiX /> : <HiMenu />}
+              </button>
               <HiShieldCheck size={18} style={{ color: 'var(--primary)', opacity: 0.6 }} />
               <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
                 {location.pathname === '/admin' ? 'Overview' : location.pathname === '/admin/messages' ? 'Telegram Messages' : location.pathname.replace('/admin/', '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}

@@ -106,6 +106,17 @@
 .blog-author-mini { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
 .author-mini-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--gradient-primary); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: white; }
 
+/* ── Blog Skeleton / Error / Empty ── */
+.blog-skeleton { pointer-events: none; }
+.skeleton-box { width: 100%; height: 100%; background: linear-gradient(90deg, var(--bg-elevated) 25%, var(--border) 50%, var(--bg-elevated) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; border-radius: var(--radius-xl) var(--radius-xl) 0 0; }
+.skeleton-line { height: 14px; border-radius: 6px; background: linear-gradient(90deg, var(--bg-elevated) 25%, var(--border) 50%, var(--bg-elevated) 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; margin-bottom: 10px; }
+.skeleton-line.short { width: 40%; }
+.skeleton-line.medium { width: 70%; }
+.skeleton-line.long { width: 90%; }
+.blog-error, .blog-empty { text-align: center; padding: 48px 24px; color: var(--text-secondary); }
+.blog-error p { font-size: 15px; margin-bottom: 16px; color: var(--text-muted); }
+.blog-empty p { font-size: 15px; color: var(--text-muted); }
+
 .cta-section {
   position: relative;
   padding: 120px 0;
@@ -139,10 +150,49 @@
 }
 
 @media (max-width: 768px) {
-  .coverage-grid, .blog-grid { grid-template-columns: 1fr; }
-  .stats-grid { gap: 24px; flex-wrap: wrap; }
-  .stat-value { font-size: 1.75rem; }
-  .hero-content h1 { font-size: 2.25rem; }
   .hero-section { min-height: auto; padding: 100px 0 60px; }
+  .hero-content { padding: 0 20px; }
+  .hero-content h1 { font-size: 2rem; line-height: 1.2; }
+  .hero-description { font-size: 0.95rem; max-width: 100%; margin-bottom: 24px; }
+  .hero-actions { flex-direction: column; align-items: center; gap: 12px; margin-bottom: 36px; }
+  .hero-badge { font-size: 12px; padding: 6px 14px; }
+
+  .coverage-grid, .blog-grid { grid-template-columns: 1fr; }
+
+  .stats-grid { gap: 20px; flex-wrap: wrap; justify-content: center; padding-top: 32px; }
+  .stat-value { font-size: 1.5rem; }
+  .stat-label { font-size: 12px; }
+
+  .about-story-grid { grid-template-columns: 1fr; gap: 20px; }
+  .about-story-card { padding: 24px; }
+  .values-grid { grid-template-columns: repeat(2, 1fr); gap: 16px; }
+
   .cta-title { font-size: 1.75rem; }
+  .cta-description { font-size: 1rem; max-width: 100%; }
+  .cta-section { padding: 80px 0; }
+
+  .contact-grid { grid-template-columns: 1fr; gap: 24px; }
+
+  .blog-preview-section, .coverage-section { padding: 60px 0; }
+  .section { padding: 60px 0; }
+  .section-header { margin-bottom: 32px; }
+  .section-title { font-size: 1.75rem; }
+  .section-subtitle { font-size: 14px; }
+}
+
+@media (max-width: 480px) {
+  .hero-content h1 { font-size: 1.65rem; }
+  .hero-description { font-size: 0.85rem; }
+  .hero-section { padding: 80px 0 40px; }
+
+  .values-grid { grid-template-columns: 1fr; }
+  .stats-grid { gap: 14px; }
+  .stat-value { font-size: 1.25rem; }
+
+  .container { padding: 0 16px; }
+  .coverage-card, .blog-card-content { padding: 20px 16px; }
+  .blog-card-image { height: 160px; }
+  .blog-card-content h3 { font-size: 1rem; }
+
+  .section-title { font-size: 1.5rem; }
 }

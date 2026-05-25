@@ -457,3 +457,23 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ── Confirm Dialog ── */
+.confirm-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0,0,0,0.5); display: flex;
+  align-items: center; justify-content: center;
+  padding: 20px;
+}
+.confirm-dialog {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: var(--radius-2xl, 16px); padding: 28px;
+  max-width: 420px; width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+.confirm-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+.confirm-header svg { font-size: 24px; color: var(--warning, #f59e0b); }
+.confirm-header.danger svg { color: var(--error); }
+.confirm-header h3 { margin: 0; font-size: 18px; }
+.confirm-dialog p { font-size: 14px; color: var(--text-secondary); margin: 0 0 24px; line-height: 1.6; }
+.confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }

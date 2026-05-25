@@ -24,6 +24,8 @@ const itemVariants = {
 
 const Home = () => {
   const [blogPosts, setBlogPosts] = useState([]);
+  const [blogLoading, setBlogLoading] = useState(true);
+  const [blogError, setBlogError] = useState(null);
   const [coverageAreas, setCoverageAreas] = useState([]);
   const [contactForm, setContactForm] = useState({ name: '', email: '', whatsapp: '', subject: '', message: '' });
   const [contactSent, setContactSent] = useState(false);
@@ -37,9 +39,14 @@ const Home = () => {
   }, []);
 
   useEffect(() => {
+    setBlogLoading(true);
+    setBlogError(null);
     blogPostsAPI.getAll().then(({ data }) => {
       setBlogPosts(data.filter(p => p.status === 'published').slice(0, 3));
-    }).catch(console.error);
+    }).catch(err => {
+      console.error('Blog load failed:', err);
+      setBlogError('Gagal memuat artikel. Periksa koneksi atau coba lagi.');
+    }).finally(() => setBlogLoading(false));
     coverageAreasAPI.getAll().then(({ data }) => {
       setCoverageAreas(data.filter(a => a.is_active));
     }).catch(console.error);
@@ -255,38 +262,74 @@ const Home = () => {
             whileInView="visible"
             viewport={{ once: true, margin: '-50px' }}
           >
-            {blogPosts.map(post => (
-              <Link key={post.id} to={`/blog/${post.slug}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
-                <motion.article
-                  className="blog-card"
-                  variants={itemVariants}
-                  whileHover={{ y: -6 }}
-                >
-                  <div className="blog-card-image">
-                    {post.featured_image_url ? (
-                      <img src={post.featured_image_url} alt={post.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      <div className="blog-img-placeholder">
-                        <span>{post.category[0]}</span>
-                      </div>
-                    )}
-                  </div>
+            {blogLoading ? (
+              [1, 2, 3].map(i => (
+                <div key={i} className="blog-card blog-skeleton">
+                  <div className="blog-card-image skeleton-box" />
                   <div className="blog-card-content">
-                    <div className="blog-meta">
-                      <span className="blog-category-badge">{post.category}</span>
-                      <span className="blog-read-time">{post.read_time}</span>
-                    </div>
-                    <h3>{post.title}</h3>
-                    <p>{post.excerpt}</p>
-                    <div className="blog-card-footer">
-                      <span className="btn btn-ghost" style={{ cursor: 'pointer' }}>
-                        Baca <HiArrowRight />
-                      </span>
-                    </div>
+                    <div className="skeleton-line short" />
+                    <div className="skeleton-line medium" />
+                    <div className="skeleton-line long" />
                   </div>
-                </motion.article>
-              </Link>
-            ))}
+                </div>
+              ))
+            ) : blogError ? (
+              <div className="blog-error" style={{ gridColumn: '1 / -1' }}>
+                <p>{blogError}</p>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => {
+                    setBlogLoading(true);
+                    setBlogError(null);
+                    blogPostsAPI.getAll().then(({ data }) => {
+                      setBlogPosts(data.filter(p => p.status === 'published').slice(0, 3));
+                    }).catch(err => {
+                      console.error('Blog load failed:', err);
+                      setBlogError('Gagal memuat artikel. Periksa koneksi atau coba lagi.');
+                    }).finally(() => setBlogLoading(false));
+                  }}
+                >
+                  Coba Lagi
+                </button>
+              </div>
+            ) : blogPosts.length === 0 ? (
+              <div className="blog-empty" style={{ gridColumn: '1 / -1' }}>
+                <p>Belum ada artikel.</p>
+              </div>
+            ) : (
+              blogPosts.map(post => (
+                <Link key={post.id} to={`/blog/${post.slug}`} style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}>
+                  <motion.article
+                    className="blog-card"
+                    variants={itemVariants}
+                    whileHover={{ y: -6 }}
+                  >
+                    <div className="blog-card-image">
+                      {post.featured_image_url ? (
+                        <img src={post.featured_image_url} alt={post.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <div className="blog-img-placeholder">
+                          <span>{post.category[0]}</span>
+                        </div>
+                      )}
+                    </div>
+                    <div className="blog-card-content">
+                      <div className="blog-meta">
+                        <span className="blog-category-badge">{post.category}</span>
+                        <span className="blog-read-time">{post.read_time}</span>
+                      </div>
+                      <h3>{post.title}</h3>
+                      <p>{post.excerpt}</p>
+                      <div className="blog-card-footer">
+                        <span className="btn btn-ghost" style={{ cursor: 'pointer' }}>
+                          Baca <HiArrowRight />
+                        </span>
+                      </div>
+                    </div>
+                  </motion.article>
+                </Link>
+              ))
+            )}
           </motion.div>
         </div>
       </section>

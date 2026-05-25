@@ -219,7 +219,9 @@ export const invoicesAPI = {
   create: (data) => api.post('/invoices', data),
   cancel: (id) => api.put(`/invoices/${id}/cancel`),
   getPdf: (id) => api.get(`/invoices/${id}/pdf`, { responseType: 'blob' }),
-  generateMonthly: () => api.post('/invoices/generate-monthly')
+  generateMonthly: () => api.post('/invoices/generate-monthly'),
+  delete: (id) => api.delete(`/invoices/${id}`),
+  deleteAll: () => api.delete('/invoices')
 };
 
 export const subscriptionsAPI = {
@@ -229,7 +231,9 @@ export const subscriptionsAPI = {
   update: (id, data) => api.put(`/subscriptions/${id}`, data),
   suspend: (id) => api.put(`/subscriptions/${id}/suspend`),
   activate: (id) => api.put(`/subscriptions/${id}/activate`),
-  terminate: (id, reason) => api.put(`/subscriptions/${id}/terminate`, { reason })
+  terminate: (id, reason) => api.put(`/subscriptions/${id}/terminate`, { reason }),
+  delete: (id) => api.delete(`/subscriptions/${id}`),
+  deleteAll: () => api.delete('/subscriptions')
 };
 
 export const paymentsAPI = {
@@ -238,7 +242,9 @@ export const paymentsAPI = {
   midtransCharge: (invoiceId, paymentMethod) =>
     api.post('/payments/midtrans-charge', { invoice_id: invoiceId, payment_method: paymentMethod }),
   manualPayment: (data) => api.post('/payments/manual', data),
-  verify: (id) => api.put(`/payments/${id}/verify`)
+  verify: (id) => api.put(`/payments/${id}/verify`),
+  delete: (id) => api.delete(`/payments/${id}`),
+  deleteAll: () => api.delete('/payments')
 };
 
 export const paymentSettingsAPI = {

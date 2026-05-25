@@ -5,9 +5,10 @@ import {
   HiDocumentText, HiFilter, HiSearch, HiEye, HiDownload,
   HiX, HiBan, HiCurrencyDollar, HiPlus, HiPrinter,
   HiCalendar, HiUser, HiCheckCircle, HiExclamationCircle,
-  HiRefresh, HiLightningBolt
+  HiRefresh, HiLightningBolt, HiTrash, HiOutlineTrash, HiLink, HiClipboardCopy
 } from 'react-icons/hi';
 import { invoicesAPI, clientsAPI, servicePackagesAPI } from '../../services/api';
+import { useToast } from '../../components/Toast';
 import './Billing.css';
 
 const formatIDR = (num) => `Rp${Number(num || 0).toLocaleString('id-ID')}`;
@@ -40,6 +41,7 @@ const Invoices = () => {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [showDetail, setShowDetail] = useState(null);
+  const [copiedLink, setCopiedLink] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(initialForm);
   const [saving, setSaving] = useState(false);
@@ -47,6 +49,9 @@ const Invoices = () => {
   const [periodFilter, setPeriodFilter] = useState('');
   const [search, setSearch] = useState('');
   const [stats, setStats] = useState({ total: 0, unpaid: 0, overdue: 0, paid: 0, revenue: 0 });
+  const { showToast } = useToast();
+  const [generating, setGenerating] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(null); // { id, single: true } or { single: false }
 
   const fetchInvoices = useCallback(async () => {
     try {
@@ -99,12 +104,16 @@ const Invoices = () => {
       if (editing) {
         const { data } = await invoicesAPI.update ? await invoicesAPI.update(editing.id, payload) : { data: payload };
         setInvoices(prev => prev.map(s => s.id === editing.id ? data : s));
+        showToast({ title: 'Invoice diperbarui.', type: 'success' });
       } else {
         const { data } = await invoicesAPI.create(payload);
-        setInvoices(prev => [...prev, data]);
+        setInvoices(prev => [data, ...prev]);
+        showToast({ title: 'Invoice berhasil dibuat.', type: 'success' });
       }
       setShowForm(false); setEditing(null); setForm(initialForm);
-    } catch (e) { console.error(e); } finally { setSaving(false); }
+    } catch (e) {
+      showToast({ title: 'Gagal simpan invoice', subtitle: e.response?.data?.message || e.message, type: 'error' });
+    } finally { setSaving(false); }
   };
 
   const handleCancel = async (id) => {
@@ -124,11 +133,72 @@ const Invoices = () => {
     } catch (e) { console.error(e); }
   };
 
-  const handleGenerateMonthly = async () => {
+  const handleCopyPaymentLink = async (token) => {
+    const link = `${window.location.origin}/pay/${token}`;
     try {
-      await invoicesAPI.generateMonthly();
+      await navigator.clipboard.writeText(link);
+      showToast({ title: 'Link pembayaran disalin!', type: 'success' });
+      setCopiedLink(true);
+      setTimeout(() => setCopiedLink(false), 2000);
+      // Also try direct text selection feedback
+      if (window.getSelection) {
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+      }
+    } catch {
+      // Fallback for older browsers / non-HTTPS
+      const ta = document.createElement('textarea');
+      ta.value = link;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast({ title: 'Link pembayaran disalin!', type: 'success' });
+        setCopiedLink(true);
+        setTimeout(() => setCopiedLink(false), 2000);
+      } catch {
+        showToast({ title: 'Gagal menyalin, buka manual: ' + link, type: 'error' });
+      }
+      document.body.removeChild(ta);
+    }
+  };
+
+  const handleGenerateMonthly = async () => {
+    setGenerating(true);
+    try {
+      const { data } = await invoicesAPI.generateMonthly();
+      showToast({ title: data.message || `${data.generated} invoice dibuat.`, type: 'success' });
       fetchInvoices();
-    } catch (e) { console.error(e); }
+    } catch (e) {
+      showToast({ title: 'Gagal generate invoice', subtitle: e.response?.data?.message || e.message, type: 'error' });
+    } finally { setGenerating(false); }
+  };
+
+  const handleDelete = async (id) => {
+    setConfirmDel({ id, single: true });
+  };
+
+  const executeDelete = async () => {
+    if (!confirmDel) return;
+    setConfirmDel(null);
+    try {
+      if (confirmDel.single) {
+        await invoicesAPI.delete(confirmDel.id);
+        setInvoices(prev => prev.filter(i => i.id !== confirmDel.id));
+        showToast({ title: 'Invoice dihapus.', type: 'success' });
+      } else {
+        const { data } = await invoicesAPI.deleteAll();
+        setInvoices([]);
+        showToast({ title: data.message, type: 'success' });
+      }
+    } catch (e) { showToast({ title: 'Gagal hapus', subtitle: e.response?.data?.message || e.message, type: 'error' }); }
+  };
+
+  const handleDeleteAll = async () => {
+    setConfirmDel({ single: false });
   };
 
   const filtered = invoices.filter(inv => {
@@ -160,8 +230,12 @@ const Invoices = () => {
           <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Manage customer invoices & billing</span>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button className="btn btn-secondary btn-sm" onClick={handleGenerateMonthly} title="Generate this month's invoices">
-            <HiLightningBolt /> Generate Monthly
+          <button className="btn btn-secondary btn-sm" onClick={handleGenerateMonthly} disabled={generating}
+            title="Generate this month's invoices">
+            <HiLightningBolt /> {generating ? 'Generating...' : 'Generate Monthly'}
+          </button>
+          <button className="btn btn-danger btn-sm" onClick={handleDeleteAll} title="Delete all invoices">
+            <HiOutlineTrash /> Delete All
           </button>
           <button className="btn btn-primary" onClick={() => { setEditing(null); setForm(initialForm); setShowForm(true); }}>
             <HiPlus /> New Invoice
@@ -272,6 +346,9 @@ const Invoices = () => {
                         <HiBan size={15} style={{ color: 'var(--error)' }} />
                       </button>
                     )}
+                    <button className="btn btn-ghost btn-sm" title="Delete Invoice" onClick={() => handleDelete(inv.id)}>
+                      <HiTrash size={15} style={{ color: 'var(--error)' }} />
+                    </button>
                   </div>
                 </td>
               </motion.tr>
@@ -372,7 +449,21 @@ const Invoices = () => {
                 )}
 
                 {/* Actions in detail */}
-                <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
+                <div style={{ display: 'flex', gap: 10, marginTop: 20, flexWrap: 'wrap' }}>
+                  {showDetail.payment_token && (
+                    copiedLink ? (
+                      <button className="btn btn-secondary btn-sm"
+                        style={{ color: 'var(--success)', cursor: 'default' }}>
+                        <HiCheckCircle /> Link Disalin
+                      </button>
+                    ) : (
+                      <button className="btn btn-secondary btn-sm"
+                        onClick={() => handleCopyPaymentLink(showDetail.payment_token)}
+                        style={{ color: 'var(--primary-light)' }}>
+                        <HiLink /> Copy Payment Link
+                      </button>
+                    )
+                  )}
                   <button className="btn btn-secondary btn-sm" onClick={() => handleDownloadPdf(showDetail.id)}>
                     <HiDownload /> Download PDF
                   </button>
@@ -463,6 +554,33 @@ const Invoices = () => {
             onChange={e => setForm({...form, notes: e.target.value})} />
         </div>
       </FormModal>
+
+      {/* Confirm Delete Dialog */}
+      <AnimatePresence>
+        {confirmDel && (
+          <motion.div className="confirm-overlay" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={() => setConfirmDel(null)}>
+            <motion.div className="confirm-dialog" initial={{ scale: 0.95 }} animate={{ scale: 1 }} exit={{ scale: 0.95 }}
+              onClick={e => e.stopPropagation()}>
+              <div className="confirm-header danger">
+                <HiExclamationCircle size={24} />
+                <h3>{confirmDel.single ? 'Hapus Invoice' : 'Hapus Semua Invoice'}</h3>
+              </div>
+              <p>
+                {confirmDel.single
+                  ? 'Yakin ingin menghapus invoice ini? Data yang dihapus tidak bisa dikembalikan.'
+                  : '⚠️ Yakin ingin menghapus SEMUA invoice? Seluruh data invoice akan hilang permanen dan tidak bisa dikembalikan.'}
+              </p>
+              <div className="confirm-actions">
+                <button className="btn btn-secondary" onClick={() => setConfirmDel(null)}>Batal</button>
+                <button className="btn btn-danger" onClick={executeDelete}>
+                  Ya, Hapus
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
