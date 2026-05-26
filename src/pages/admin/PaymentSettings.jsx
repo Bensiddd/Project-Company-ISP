@@ -109,12 +109,21 @@ const PaymentSettings = () => {
   };
 
   const CHANNELS = [
-    { value: 'gopay', label: 'GoPay' },
-    { value: 'bank_transfer', label: 'Bank Transfer' },
-    { value: 'credit_card', label: 'Credit Card' },
-    { value: 'cstore', label: 'Convenience Store' },
-    { value: 'shopeepay', label: 'ShopeePay' },
-    { value: 'akulaku', label: 'Akulaku' },
+    { value: 'gopay', label: 'GoPay', group: 'E-Wallet' },
+    { value: 'shopeepay', label: 'ShopeePay', group: 'E-Wallet' },
+    { value: 'qris', label: 'QRIS', group: 'E-Wallet' },
+    { value: 'credit_card', label: 'Credit Card (Visa/MC/JCB)', group: 'Card' },
+    { value: 'bank_transfer', label: 'Bank Transfer (All Banks)', group: 'Bank Transfer' },
+    { value: 'bca_va', label: 'BCA Virtual Account', group: 'Bank Transfer' },
+    { value: 'bni_va', label: 'BNI Virtual Account', group: 'Bank Transfer' },
+    { value: 'bri_va', label: 'BRI Virtual Account', group: 'Bank Transfer' },
+    { value: 'mandiri_va', label: 'Mandiri Bill', group: 'Bank Transfer' },
+    { value: 'permata_va', label: 'Permata Virtual Account', group: 'Bank Transfer' },
+    { value: 'cimb_va', label: 'CIMB Virtual Account', group: 'Bank Transfer' },
+    { value: 'cstore', label: 'Convenience Store (Indomaret/Alfamart)', group: 'OTC' },
+    { value: 'akulaku', label: 'Akulaku PayLater', group: 'PayLater' },
+    { value: 'indomaret', label: 'Indomaret', group: 'OTC' },
+    { value: 'alfamart', label: 'Alfamart', group: 'OTC' },
   ];
 
   if (loading) {
@@ -235,20 +244,55 @@ const PaymentSettings = () => {
       {/* Payment Channels */}
       <div className="settings-section">
         <h3><HiCurrencyDollar /> Active Payment Channels</h3>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-          {CHANNELS.map(ch => (
-            <label key={ch.value} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '8px 14px', background: form.payment_channels.includes(ch.value) ? 'rgba(99,102,241,0.1)' : 'var(--bg-secondary)', borderRadius: 'var(--radius)', border: `1px solid ${form.payment_channels.includes(ch.value) ? 'rgba(99,102,241,0.3)' : 'var(--border)'}`, transition: 'var(--transition)' }}>
-              <input type="checkbox" checked={form.payment_channels.includes(ch.value)}
-                onChange={() => {
-                  const channels = form.payment_channels.includes(ch.value)
-                    ? form.payment_channels.filter(c => c !== ch.value)
-                    : [...form.payment_channels, ch.value];
-                  setForm({ ...form, payment_channels: channels });
-                }} />
-              {ch.label}
-            </label>
-          ))}
-        </div>
+        
+        {/* Production mode warning */}
+        {!form.is_sandbox && (
+          <div style={{ marginBottom: 16, padding: '12px 16px', background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)', borderRadius: 'var(--radius)', fontSize: 13 }}>
+            <strong style={{ color: '#f59e0b' }}>⚠ Production Mode — Aktivasi Payment Channel</strong>
+            <p style={{ margin: '6px 0 0', color: 'var(--text-muted)', lineHeight: 1.5 }}>
+              Di production, payment channel harus diaktivasi manual lewat{' '}
+              <a href="https://dashboard.midtrans.com" target="_blank" rel="noopener" style={{ color: 'var(--primary)' }}>
+                Midtrans MAP Dashboard
+              </a>:
+            </p>
+            <ol style={{ margin: '8px 0 0', paddingLeft: 20, color: 'var(--text-muted)', fontSize: 12, lineHeight: 1.7 }}>
+              <li>Pilih Environment <strong>Production</strong></li>
+              <li>Klik <strong>+ Payment Methods</strong></li>
+              <li>Pilih metode pembayaran → upload dokumen → sign addendum</li>
+              <li>Tunggu review & approval dari tim Midtrans</li>
+            </ol>
+            <p style={{ margin: '8px 0 0', color: 'var(--text-muted)', fontSize: 12 }}>
+              Centang di halaman ini hanya untuk reference/pencatatan — tidak otomatis mengaktifkan channel di production.{' '}
+              <a href="https://docs.midtrans.com/docs/activation-of-payment-methods-that-havent-been-active-yet" target="_blank" rel="noopener" style={{ color: 'var(--primary)' }}>
+                Docs lengkap →
+              </a>
+            </p>
+          </div>
+        )}
+
+        {['E-Wallet', 'Bank Transfer', 'Card', 'OTC', 'PayLater'].map(group => {
+          const groupChannels = CHANNELS.filter(ch => ch.group === group);
+          if (!groupChannels.length) return null;
+          return (
+            <div key={group} style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{group}</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                {groupChannels.map(ch => (
+                  <label key={ch.value} style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', padding: '8px 14px', background: form.payment_channels.includes(ch.value) ? 'rgba(99,102,241,0.1)' : 'var(--bg-secondary)', borderRadius: 'var(--radius)', border: `1px solid ${form.payment_channels.includes(ch.value) ? 'rgba(99,102,241,0.3)' : 'var(--border)'}`, transition: 'var(--transition)' }}>
+                    <input type="checkbox" checked={form.payment_channels.includes(ch.value)}
+                      onChange={() => {
+                        const channels = form.payment_channels.includes(ch.value)
+                          ? form.payment_channels.filter(c => c !== ch.value)
+                          : [...form.payment_channels, ch.value];
+                        setForm({ ...form, payment_channels: channels });
+                      }} />
+                    {ch.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+          );
+        })}
       </div>
 
       {/* Bank Accounts for Manual Transfer */}

@@ -298,11 +298,10 @@ router.post('/public-charge/:token', async (req, res) => {
         email: invoice.client_email || `client${invoice.client_id}@maznet.local`,
         phone: invoice.client_phone || '08123456789'
       },
-      enabled_payments: enabledChannels,
       callbacks: {
-        finish: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment/settlement?order_id=${orderId}`,
-        error: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment/error?order_id=${orderId}`,
-        pending: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment/pending?order_id=${orderId}`,
+        finish: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment-result?order_id=${orderId}&status=success`,
+        error: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment-result?order_id=${orderId}&status=error`,
+        unfinish: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment-result?order_id=${orderId}&status=pending`,
       }
     };
 

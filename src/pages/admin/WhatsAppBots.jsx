@@ -217,6 +217,8 @@ const WhatsAppBots = () => {
       setForm(initialForm);
       setAiTestResult(null);
       fetchBots();
+      // Re-fetch after 3s to pick up status from background auto-connect
+      setTimeout(() => fetchBots(), 3000);
     } catch (e) {
       showToast({ type: 'error', title: '❌ Gagal Menyimpan', subtitle: e.response?.data?.message || e.message });
     } finally { setSaving(false); }

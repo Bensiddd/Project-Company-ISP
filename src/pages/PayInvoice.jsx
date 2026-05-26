@@ -23,16 +23,87 @@ const PayInvoice = () => {
       .finally(() => setLoading(false));
   }, [token]);
 
+  // Listen for postMessage from popup (PaymentResult auto-closes after payment)
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type === 'midtrans_payment_result') {
+        pollPaymentConfirmation();
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [token]);
+
   const handlePay = async () => {
     setPaying(true);
     setError(null);
     try {
       const { data } = await API.post(`/payments/public-charge/${token}`);
-      window.location.href = data.redirect_url;
+      // Open Midtrans Snap in popup instead of full redirect
+      const w = 450, h = 620;
+      const left = (screen.width - w) / 2;
+      const top = (screen.height - h) / 2;
+      const popup = window.open(
+        data.redirect_url,
+        'midtrans_pay',
+        `width=${w},height=${h},left=${left},top=${top},resizable=no,scrollbars=no`
+      );
+      if (!popup) {
+        // Fallback: popup blocked, redirect
+        window.location.href = data.redirect_url;
+        return;
+      }
+      // Poll invoice status after popup close
+      setPaying(false);
+      const pollClosed = setInterval(() => {
+        if (popup.closed) {
+          clearInterval(pollClosed);
+          checkPaymentStatus();
+        }
+      }, 800);
     } catch (err) {
       setError(err.response?.data?.message || 'Gagal memproses pembayaran.');
       setPaying(false);
     }
+  };
+
+  const checkPaymentStatus = async () => {
+    setLoading(true);
+    try {
+      const { data } = await API.get(`/payments/public/${token}`);
+      if (data.already_paid || data.status === 'paid') {
+        setInvoice({ ...data, already_paid: true });
+      } else {
+        setInvoice(data);
+        setError('Pembayaran belum selesai. Jika sudah bayar, tunggu beberapa saat lalu refresh.');
+      }
+    } catch {
+      setInvoice(prev => ({ ...prev, already_paid: false }));
+    }
+    setLoading(false);
+  };
+
+  // Retry polling after popup auto-closes — wait for Midtrans webhook to update invoice
+  const pollPaymentConfirmation = async () => {
+    let attempts = 0;
+    const maxAttempts = 10;
+    const poll = setInterval(async () => {
+      attempts++;
+      try {
+        const { data } = await API.get(`/payments/public/${token}`);
+        if (data.already_paid || data.status === 'paid') {
+          clearInterval(poll);
+          setInvoice({ ...data, already_paid: true });
+          setLoading(false);
+          return;
+        }
+      } catch {}
+      if (attempts >= maxAttempts) {
+        clearInterval(poll);
+        checkPaymentStatus(); // final check
+      }
+    }, 3000);
   };
 
   if (loading) {

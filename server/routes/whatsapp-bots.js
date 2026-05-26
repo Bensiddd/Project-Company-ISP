@@ -15,13 +15,19 @@ router.get('/', authenticate, async (req, res) => {
     const bots = await db.all('SELECT * FROM whatsapp_bots ORDER BY created_at DESC');
     
     // Mask sensitive data
-    const masked = bots.map(bot => ({
-      ...bot,
-      ai_api_key: bot.ai_api_key ? maskSecret(decrypt(bot.ai_api_key)) : null,
-      api_key: bot.api_key ? maskSecret(decrypt(bot.api_key)) : null,
-      qr_code: bot.status === 'qr' ? bot.qr_code : null, // Only send QR when needed
-      session_data: undefined // Never send session data to frontend
-    }));
+    const masked = bots.map(bot => {
+      let maskedAiKey = null;
+      let maskedApiKey = null;
+      try { maskedAiKey = bot.ai_api_key ? maskSecret(decrypt(bot.ai_api_key)) : null; } catch { maskedAiKey = bot.ai_api_key ? '•••• (decrypt error)' : null; }
+      try { maskedApiKey = bot.api_key ? maskSecret(decrypt(bot.api_key)) : null; } catch { maskedApiKey = bot.api_key ? '•••• (decrypt error)' : null; }
+      return {
+        ...bot,
+        ai_api_key: maskedAiKey,
+        api_key: maskedApiKey,
+        qr_code: bot.status === 'qr' ? bot.qr_code : null,
+        session_data: undefined
+      };
+    });
 
     res.json(masked);
   } catch (error) {
@@ -36,10 +42,15 @@ router.get('/:id', authenticate, async (req, res) => {
     const bot = await db.get('SELECT * FROM whatsapp_bots WHERE id=?', [req.params.id]);
     if (!bot) return res.status(404).json({ message: 'Bot not found' });
 
+    let maskedAiKey = null;
+    let maskedApiKey = null;
+    try { maskedAiKey = bot.ai_api_key ? maskSecret(decrypt(bot.ai_api_key)) : null; } catch { maskedAiKey = bot.ai_api_key ? '•••• (decrypt error)' : null; }
+    try { maskedApiKey = bot.api_key ? maskSecret(decrypt(bot.api_key)) : null; } catch { maskedApiKey = bot.api_key ? '•••• (decrypt error)' : null; }
+
     res.json({
       ...bot,
-      ai_api_key: bot.ai_api_key ? maskSecret(decrypt(bot.ai_api_key)) : null,
-      api_key: bot.api_key ? maskSecret(decrypt(bot.api_key)) : null,
+      ai_api_key: maskedAiKey,
+      api_key: maskedApiKey,
       qr_code: bot.status === 'qr' ? bot.qr_code : null,
       session_data: undefined
     });
@@ -80,19 +91,22 @@ router.post('/', authenticate, async (req, res) => {
 
     await db.logActivity('whatsapp_bot', 'Bot WhatsApp dibuat', `#${id} ${name}`, req.user.id);
 
-    // Auto-connect if active
-    if (is_active) {
-      const { getProvider } = await import('../services/whatsapp/provider-factory.js');
-      const freshBot = await db.get('SELECT * FROM whatsapp_bots WHERE id=?', [id]);
-      try {
-        const providerInstance = getProvider(freshBot.provider);
-        await providerInstance.connect(freshBot);
-      } catch (err) {
-        console.error('Auto-connect failed:', err);
-      }
-    }
-
+    // Send response FIRST — don't block on Baileys connect (can take 10-30s)
     res.json({ id, message: 'Bot created successfully' });
+
+    // THEN auto-connect in background (fire-and-forget)
+    if (is_active) {
+      setImmediate(async () => {
+        try {
+          const { getProvider } = await import('../services/whatsapp/provider-factory.js');
+          const freshBot = await db.get('SELECT * FROM whatsapp_bots WHERE id=?', [id]);
+          const providerInstance = getProvider(freshBot.provider);
+          await providerInstance.connect(freshBot);
+        } catch (err) {
+          console.error('Auto-connect failed:', err);
+        }
+      });
+    }
   } catch (error) {
     console.error('Create WhatsApp bot error:', error);
     res.status(500).json({ message: 'Failed to create bot' });

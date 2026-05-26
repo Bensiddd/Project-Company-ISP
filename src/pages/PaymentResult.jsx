@@ -1,5 +1,5 @@
-import React from 'react';
-import { useParams, useSearchParams, Link } from 'react-router-dom';
+import React, { useEffect } from 'react';
+import { useSearchParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import './PayInvoice.css';
 
@@ -49,9 +49,22 @@ const statusConfig = {
 };
 
 const PaymentResult = () => {
-  const { status } = useParams();
   const [searchParams] = useSearchParams();
+  const status = searchParams.get('status') || 'settlement';
   const orderId = searchParams.get('order_id');
+
+  // Auto-close popup: postMessage to parent, then close self
+  useEffect(() => {
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage({
+        type: 'midtrans_payment_result',
+        status: searchParams.get('status') || 'settlement',
+        order_id: searchParams.get('order_id')
+      }, window.location.origin);
+      // Brief delay so postMessage delivers before window closes
+      setTimeout(() => window.close(), 600);
+    }
+  }, []);
 
   const config = statusConfig[status] || statusConfig.error;
 
