@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import FormModal from '../../components/FormModal';
 import {
   HiCurrencyDollar, HiFilter, HiSearch, HiEye, HiX,
   HiCheckCircle, HiRefresh, HiCash, HiCreditCard,
-  HiClock, HiExclamationCircle, HiExternalLink, HiTrash, HiOutlineTrash
+  HiClock, HiExclamationCircle, HiExternalLink, HiTrash, HiOutlineTrash, HiBadgeCheck
 } from 'react-icons/hi';
 import { paymentsAPI, invoicesAPI } from '../../services/api';
 import { useToast } from '../../components/Toast';
@@ -68,6 +68,13 @@ const Payments = () => {
   useEffect(() => { fetchPayments(); }, [fetchPayments]);
   useEffect(() => { fetchInvoices(); }, []);
 
+  const pollRef = useRef(null);
+  useEffect(() => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(() => fetchPayments(), 30_000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [fetchPayments]);
+
   const getInvNumber = (id) => {
     const inv = invoices.find(i => i.id === id) || payments.find(p => p.invoice_id === id);
     if (inv) return inv.invoice_number || `INV-${id}`;
@@ -108,6 +115,22 @@ const Payments = () => {
         window.open(data.redirect_url, '_blank');
       }
     } catch (e) { console.error(e); }
+  };
+
+  const handleCheckMidtrans = async (id) => {
+    try {
+      const { data } = await paymentsAPI.checkMidtrans(id);
+      setPayments(prev => prev.map(p => p.id === id ? data : p));
+      if (data.status === 'success') {
+        showToast({ title: 'Pembayaran berhasil.', type: 'success' });
+      } else if (data.status === 'failed') {
+        showToast({ title: 'Pembayaran gagal.', type: 'error' });
+      } else {
+        showToast({ title: `Status: ${data.status}`, subtitle: 'Coba lagi nanti.', type: 'info' });
+      }
+    } catch (e) {
+      showToast({ title: 'Gagal mengecek', subtitle: e.response?.data?.message || e.message, type: 'error' });
+    }
   };
 
   const handleDelete = async (id) => {
@@ -239,8 +262,8 @@ const Payments = () => {
                 </td>
                 <td>
                   <span className="payment-method-badge">
-                    {p.payment_method === 'midtrans' ? <HiCreditCard size={12} /> : <HiCash size={12} />}
-                    {p.payment_method === 'midtrans' ? 'Midtrans' : p.payment_method === 'manual_transfer' ? 'Transfer' : p.payment_method === 'cash' ? 'Cash' : p.payment_method || '-'}
+                    {(p.payment_method === 'midtrans' || p.payment_method === 'midtrans_snap') ? <HiCreditCard size={12} /> : <HiCash size={12} />}
+                    {(p.payment_method === 'midtrans' || p.payment_method === 'midtrans_snap') ? 'Midtrans' : p.payment_method === 'manual_transfer' ? 'Transfer' : p.payment_method === 'cash' ? 'Cash' : p.payment_method || '-'}
                   </span>
                 </td>
                 <td><span className="billing-amount">{formatIDR(getAmount(p))}</span></td>
@@ -263,11 +286,18 @@ const Payments = () => {
                     </button>
                     {p.status === 'pending' && (
                       <>
+                        {(p.payment_method === 'midtrans_snap') && p.transaction_id && (
+                          <button className="btn btn-ghost btn-sm" title="Sync Midtrans Status"
+                            onClick={() => handleCheckMidtrans(p.id)}
+                            style={{ color: 'var(--primary-light)' }}>
+                            <HiRefresh size={15} />
+                          </button>
+                        )}
                         <button className="btn btn-ghost btn-sm" title="Verify Payment" onClick={() => handleVerify(p.id)}
                           style={{ color: 'var(--success)' }}>
                           <HiCheckCircle size={15} />
                         </button>
-                        {p.payment_method === 'midtrans' && p.invoice_id && (
+                        {(p.payment_method === 'midtrans' || p.payment_method === 'midtrans_snap') && p.invoice_id && (
                           <button className="btn btn-ghost btn-sm" title="Retry Midtrans" onClick={() => handleMidtransCharge(p.invoice_id)}
                             style={{ color: 'var(--primary-light)' }}>
                             <HiExternalLink size={15} />

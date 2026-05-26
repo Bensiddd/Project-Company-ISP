@@ -243,6 +243,7 @@ export const paymentsAPI = {
     api.post('/payments/midtrans-charge', { invoice_id: invoiceId, payment_method: paymentMethod }),
   manualPayment: (data) => api.post('/payments/manual', data),
   verify: (id) => api.put(`/payments/${id}/verify`),
+  checkMidtrans: (id) => api.post(`/payments/${id}/check-midtrans`),
   delete: (id) => api.delete(`/payments/${id}`),
   deleteAll: () => api.delete('/payments')
 };

@@ -212,3 +212,40 @@
   color: var(--text-muted, #64748b);
   margin: 0;
 }
+
+.pay-refresh-button {
+  width: 100%;
+  padding: 10px;
+  background: transparent;
+  color: var(--text-secondary, #94a3b8);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: all 0.2s;
+}
+
+.pay-refresh-button:hover:not(:disabled) {
+  border-color: rgba(99,102,241,0.4);
+  color: #818cf8;
+}
+
+.pay-refresh-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pay-status-checking {
+  text-align: center;
+  font-size: 13px;
+  color: #818cf8;
+  margin-bottom: 12px;
+  animation: pulse-text 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse-text {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}

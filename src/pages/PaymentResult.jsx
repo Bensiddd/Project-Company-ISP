@@ -53,17 +53,19 @@ const PaymentResult = () => {
   const status = searchParams.get('status') || 'settlement';
   const orderId = searchParams.get('order_id');
 
-  // Auto-close popup: postMessage to parent, then close self
+  // Notify parent + close popup
   useEffect(() => {
+    const statusVal = searchParams.get('status') || 'settlement';
+    const orderVal = searchParams.get('order_id');
+
     if (window.opener && !window.opener.closed) {
       window.opener.postMessage({
         type: 'midtrans_payment_result',
-        status: searchParams.get('status') || 'settlement',
-        order_id: searchParams.get('order_id')
+        status: statusVal,
+        order_id: orderVal
       }, window.location.origin);
-      // Brief delay so postMessage delivers before window closes
-      setTimeout(() => window.close(), 600);
     }
+    setTimeout(() => window.close(), 500);
   }, []);
 
   const config = statusConfig[status] || statusConfig.error;

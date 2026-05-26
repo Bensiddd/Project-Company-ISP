@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import axios from 'axios';
 import './PayInvoice.css';
 
-const API = axios.create({ baseURL: import.meta.env.VITE_API_URL || '/api', timeout: 30000 });
+const API = axios.create({ baseURL: import.meta.env.VITE_API_URL || '/api', timeout: 10000 });
 
 const formatIDR = (num) => `Rp${Number(num || 0).toLocaleString('id-ID')}`;
 
@@ -14,33 +14,136 @@ const PayInvoice = () => {
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [error, setError] = useState(null);
+  const [checkingStatus, setCheckingStatus] = useState(false);
+  const paidRef = useRef(false);
+  const checkingRef = useRef(false); // prevent overlapping polls
+
+  const markPaid = (data) => {
+    paidRef.current = true;
+    checkingRef.current = false;
+    setInvoice(prev => ({ ...(prev || {}), ...data, already_paid: true }));
+    setError(null);
+    setCheckingStatus(false);
+    setPaying(false);
+  };
+
+  const checkMidtransStatus = async () => {
+    if (paidRef.current || !token) return false;
+    if (checkingRef.current) return false; // prevent overlapping
+    checkingRef.current = true;
+    try {
+      const { data } = await API.post(`/payments/public/check-status/${token}`);
+      if (data.already_paid || data.status === 'paid') {
+        markPaid(data);
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    } finally {
+      checkingRef.current = false;
+    }
+  };
+
+  const pollRef = useRef(null);
+  const cleanupPoll = () => {
+    if (pollRef.current) {
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    }
+  };
 
   useEffect(() => {
     if (!token) return;
-    API.get(`/payments/public/${token}`)
-      .then(res => setInvoice(res.data))
-      .catch(err => setError(err.response?.data?.message || 'Link tidak valid.'))
-      .finally(() => setLoading(false));
+    const initLoad = async () => {
+      // 1. Get invoice info
+      try {
+        const { data } = await API.get(`/payments/public/${token}`);
+        if (data.already_paid || data.status === 'paid') {
+          markPaid(data);
+          setLoading(false);
+          return;
+        }
+        setInvoice(data);
+      } catch (err) {
+        setError(err.response?.data?.message || 'Link tidak valid.');
+        setLoading(false);
+        return;
+      }
+
+      // 2. Immediately check Midtrans real status
+      setCheckingStatus(true);
+      await checkMidtransStatus();
+      setCheckingStatus(false);
+      setLoading(false);
+
+      // 3. Start auto-poll every 10s
+      if (!paidRef.current) {
+        pollRef.current = setInterval(async () => {
+          const done = await checkMidtransStatus();
+          if (done) cleanupPoll();
+        }, 10000);
+      }
+    };
+    initLoad();
+    return () => cleanupPoll();
   }, [token]);
 
   // Listen for postMessage from popup (PaymentResult auto-closes after payment)
   useEffect(() => {
-    const handleMessage = (event) => {
+    const handleMessage = async (event) => {
       if (event.origin !== window.location.origin) return;
       if (event.data?.type === 'midtrans_payment_result') {
-        pollPaymentConfirmation();
+        cleanupPoll();
+        setCheckingStatus(true);
+        setError(null);
+        try {
+          // Check DB once (PaymentResult keepalive fetch may have updated)
+          const done = await checkMidtransStatus();
+          if (done) return;
+          // Fallback: poll 5x every 2s
+          let attempts = 0;
+          const poll = setInterval(async () => {
+            attempts++;
+            const ok = await checkMidtransStatus();
+            if (ok || attempts >= 5) {
+              clearInterval(poll);
+              if (!ok) {
+                setCheckingStatus(false);
+                // Restart auto-poll while we wait for settlement
+                if (!paidRef.current && !pollRef.current) {
+                  pollRef.current = setInterval(async () => {
+                    const done = await checkMidtransStatus();
+                    if (done) cleanupPoll();
+                  }, 10000);
+                }
+              }
+            }
+          }, 2000);
+        } catch {
+          setCheckingStatus(false);
+        }
       }
     };
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
   }, [token]);
 
+  const handleRefreshStatus = async () => {
+    setCheckingStatus(true);
+    const done = await checkMidtransStatus();
+    if (!done) {
+      const { data } = await API.get(`/payments/public/${token}`);
+      setInvoice(prev => ({ ...(prev || {}), ...data }));
+    }
+    setCheckingStatus(false);
+  };
+
   const handlePay = async () => {
     setPaying(true);
     setError(null);
     try {
       const { data } = await API.post(`/payments/public-charge/${token}`);
-      // Open Midtrans Snap in popup instead of full redirect
       const w = 450, h = 620;
       const left = (screen.width - w) / 2;
       const top = (screen.height - h) / 2;
@@ -50,60 +153,27 @@ const PayInvoice = () => {
         `width=${w},height=${h},left=${left},top=${top},resizable=no,scrollbars=no`
       );
       if (!popup) {
-        // Fallback: popup blocked, redirect
         window.location.href = data.redirect_url;
         return;
       }
-      // Poll invoice status after popup close
       setPaying(false);
-      const pollClosed = setInterval(() => {
+      // Monitor popup: check status immediately when closed
+      // postMessage handler + auto-poll will handle the rest
+      const monitor = setInterval(async () => {
         if (popup.closed) {
-          clearInterval(pollClosed);
-          checkPaymentStatus();
+          clearInterval(monitor);
+          setCheckingStatus(true);
+          await checkMidtransStatus();
+          // If not paid yet, auto-poll is already running; show user it's checking
+          if (!paidRef.current) {
+            setCheckingStatus(false);
+          }
         }
-      }, 800);
+      }, 2000);
     } catch (err) {
       setError(err.response?.data?.message || 'Gagal memproses pembayaran.');
       setPaying(false);
     }
-  };
-
-  const checkPaymentStatus = async () => {
-    setLoading(true);
-    try {
-      const { data } = await API.get(`/payments/public/${token}`);
-      if (data.already_paid || data.status === 'paid') {
-        setInvoice({ ...data, already_paid: true });
-      } else {
-        setInvoice(data);
-        setError('Pembayaran belum selesai. Jika sudah bayar, tunggu beberapa saat lalu refresh.');
-      }
-    } catch {
-      setInvoice(prev => ({ ...prev, already_paid: false }));
-    }
-    setLoading(false);
-  };
-
-  // Retry polling after popup auto-closes — wait for Midtrans webhook to update invoice
-  const pollPaymentConfirmation = async () => {
-    let attempts = 0;
-    const maxAttempts = 10;
-    const poll = setInterval(async () => {
-      attempts++;
-      try {
-        const { data } = await API.get(`/payments/public/${token}`);
-        if (data.already_paid || data.status === 'paid') {
-          clearInterval(poll);
-          setInvoice({ ...data, already_paid: true });
-          setLoading(false);
-          return;
-        }
-      } catch {}
-      if (attempts >= maxAttempts) {
-        clearInterval(poll);
-        checkPaymentStatus(); // final check
-      }
-    }, 3000);
   };
 
   if (loading) {
@@ -177,8 +247,22 @@ const PayInvoice = () => {
           <div className="pay-error-msg">{error}</div>
         )}
 
-        <button className="pay-button" onClick={handlePay} disabled={paying}>
+        {checkingStatus && (
+          <div className="pay-status-checking">
+            Memeriksa status pembayaran...
+          </div>
+        )}
+
+        <button className="pay-button" onClick={handlePay} disabled={paying || checkingStatus}>
           {paying ? 'Memproses...' : 'Bayar Sekarang'}
+        </button>
+
+        <button
+          className="pay-refresh-button"
+          onClick={handleRefreshStatus}
+          disabled={checkingStatus}
+        >
+          {checkingStatus ? 'Memeriksa...' : 'Refresh Status'}
         </button>
 
         <p className="pay-methods-hint">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import FormModal from '../../components/FormModal';
 import {
@@ -82,6 +82,13 @@ const Invoices = () => {
 
   useEffect(() => { fetchInvoices(); }, [fetchInvoices]);
   useEffect(() => { fetchClients(); }, []);
+
+  const pollRef = useRef(null);
+  useEffect(() => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(() => fetchInvoices(), 30_000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [fetchInvoices]);
 
   const getClientName = (id) => {
     const c = clients.find(cl => cl.id === id);

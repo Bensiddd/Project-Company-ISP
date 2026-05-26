@@ -94,6 +94,10 @@ db.init().then(async () => {
     // Initialize CS Timeout Background Worker
     const { startCSTimeoutWorker } = await import('./services/cs-timeout-worker.js');
     startCSTimeoutWorker(db);
+
+    // Initialize Payment Settlement Background Worker
+    const { startPaymentSettlementWorker } = await import('./services/payment-settlement-worker.js');
+    startPaymentSettlementWorker(db);
   });
 }).catch(err => {
   console.error('Failed to initialize database:', err);

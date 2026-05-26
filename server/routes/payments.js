@@ -6,8 +6,33 @@ import midtransClient from 'midtrans-client';
 const router = Router();
 
 // Get all payments (admin)
-router.get('/', authenticate, async (_req, res) => {
-  const payments = await db.all('SELECT * FROM payments ORDER BY created_at DESC');
+router.get('/', authenticate, async (req, res) => {
+  const { status, method, search } = req.query;
+  const clauses = [];
+  const params = [];
+
+  if (status) {
+    clauses.push('p.status = ?');
+    params.push(status);
+  }
+  if (method) {
+    if (method === 'midtrans') {
+      clauses.push("p.payment_method IN ('midtrans', 'midtrans_snap')");
+    } else {
+      clauses.push('p.payment_method = ?');
+      params.push(method);
+    }
+  }
+  if (search) {
+    clauses.push('(p.transaction_id LIKE ? OR i.invoice_number LIKE ?)');
+    params.push(`%${search}%`, `%${search}%`);
+  }
+
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : '';
+  const payments = await db.all(
+    `SELECT p.*, i.invoice_number FROM payments p LEFT JOIN invoices i ON i.id = p.invoice_id ${where} ORDER BY p.created_at DESC`,
+    params
+  );
   res.json(payments);
 });
 
@@ -42,11 +67,14 @@ router.post('/', authenticate, async (req, res) => {
   res.status(201).json(newPay);
 });
 
-// Verify payment (admin) – placeholder updates status
+// Verify payment (admin) – update payment + invoice status
 router.put('/:id/verify', authenticate, async (req, res) => {
   const payment = await db.get('SELECT * FROM payments WHERE id = ?', [req.params.id]);
   if (!payment) return res.status(404).json({ message: 'Payment not found' });
   await db.run('UPDATE payments SET status = ?, paid_at = CURRENT_TIMESTAMP WHERE id = ?', ['success', req.params.id]);
+  if (payment.invoice_id) {
+    await db.run('UPDATE invoices SET status = ? WHERE id = ?', ['paid', payment.invoice_id]);
+  }
   const updated = await db.get('SELECT * FROM payments WHERE id = ?', [req.params.id]);
   res.json(updated);
 });
@@ -65,12 +93,13 @@ router.post('/manual', authenticate, async (req, res) => {
       amount || invoice.total_amount,
       payment_method || 'manual_transfer',
       bank_name ? `${bank_name}${account_number ? ' - ' + account_number : ''}` : null,
-      'pending',
+      'success',
       JSON.stringify({ bank_name, account_name, account_number }) || null,
       notes || null
     ]
   );
   const newPay = await db.get('SELECT * FROM payments WHERE id = ?', [id]);
+  await db.run('UPDATE invoices SET status = ? WHERE id = ?', ['paid', invoice_id]);
   res.status(201).json(newPay);
 });
 
@@ -106,9 +135,10 @@ router.post('/midtrans-charge', authenticate, async (req, res) => {
       : ['gopay', 'bank_transfer', 'credit_card'];
     
     // 6. Build transaction parameter
+    const orderId = `${settings.invoice_prefix || 'INV'}-${invoice.id}-${Date.now()}`;
     const parameter = {
       transaction_details: {
-        order_id: `${settings.invoice_prefix || 'INV'}-${invoice.id}-${Date.now()}`,
+        order_id: orderId,
         gross_amount: Math.round(invoice.total_amount)
       },
       customer_details: {
@@ -118,9 +148,9 @@ router.post('/midtrans-charge', authenticate, async (req, res) => {
       },
       enabled_payments: enabledChannels,
       callbacks: {
-        finish: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment/settlement?order_id=${parameter.transaction_details.order_id}`,
-        error: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment/error?order_id=${parameter.transaction_details.order_id}`,
-        pending: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment/pending?order_id=${parameter.transaction_details.order_id}`,
+        finish: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment-result?order_id=${orderId}&status=success`,
+        error: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment-result?order_id=${orderId}&status=error`,
+        unfinish: `${process.env.FRONTEND_URL || 'http://localhost:5173'}/payment-result?order_id=${orderId}&status=pending`,
       }
     };
     
@@ -135,7 +165,7 @@ router.post('/midtrans-charge', authenticate, async (req, res) => {
         client.id,
         invoice.total_amount,
         'midtrans_snap',
-        parameter.transaction_details.order_id,
+        orderId,
         'pending',
         JSON.stringify({ snap_token: transaction.token })
       ]
@@ -333,6 +363,215 @@ router.post('/public-charge/:token', async (req, res) => {
     else if (String(httpStatus) === '404') message = 'Konfigurasi Midtrans tidak ditemukan. Hubungi admin MAZNET.';
     else if (error.ApiResponse) message = 'Pembayaran gagal diproses oleh Midtrans. Silakan coba lagi nanti.';
     res.status(httpStatus === '401' || httpStatus === '404' ? 400 : 500).json({ message });
+  }
+});
+
+// PUBLIC: Check Midtrans transaction status directly (fallback when webhook unreachable on localhost)
+router.post('/public/check-status/:token', async (req, res) => {
+  try {
+    // 1. Find invoice by token
+    const invoice = await db.get(
+      `SELECT i.*, p.id AS payment_id, p.transaction_id, p.payment_method
+       FROM invoices i
+       LEFT JOIN payments p ON p.invoice_id = i.id AND p.payment_method IN ('midtrans', 'midtrans_snap') AND p.transaction_id IS NOT NULL
+       WHERE i.payment_token = ? AND (i.payment_token_expires IS NULL OR i.payment_token_expires > NOW())
+       ORDER BY p.created_at DESC LIMIT 1`,
+      [req.params.token]
+    );
+    if (!invoice) return res.status(404).json({ message: 'Invoice not found' });
+    if (invoice.status === 'paid') {
+      console.log(`check-status token=${req.params.token.substring(0,8)}: already paid in DB`);
+      return res.json({ status: 'paid', already_paid: true });
+    }
+    if (!invoice.transaction_id) {
+      console.log(`check-status token=${req.params.token.substring(0,8)}: no transaction_id found`);
+      return res.json({ status: invoice.status });
+    }
+
+    // 2. Fetch payment settings
+    const settings = await db.get("SELECT * FROM payment_settings WHERE gateway = 'midtrans' LIMIT 1");
+    if (!settings || !settings.server_key) {
+      return res.json({ status: invoice.status, message: 'Midtrans not configured' });
+    }
+
+    // 3. Query Midtrans Core API for transaction status
+    const core = new midtransClient.CoreApi({
+      isProduction: !settings.is_sandbox,
+      serverKey: settings.server_key,
+      clientKey: settings.client_key
+    });
+
+    const statusResponse = await core.transaction.status(invoice.transaction_id);
+    const transactionStatus = statusResponse.transaction_status;
+    const fraudStatus = statusResponse.fraud_status;
+
+    console.log(`check-status token=${req.params.token.substring(0,8)} order=${invoice.transaction_id} → Midtrans: ${transactionStatus}/${fraudStatus || '-'}`);
+
+    // 4. Map to internal status
+    let paymentStatus = 'pending';
+    if (transactionStatus === 'capture') {
+      paymentStatus = (fraudStatus === 'accept') ? 'success' : 'pending';
+    } else if (transactionStatus === 'settlement') {
+      paymentStatus = 'success';
+    } else if (['cancel', 'deny', 'expire'].includes(transactionStatus)) {
+      paymentStatus = 'failed';
+    }
+
+    // 5. Update payment + invoice if status changed
+    if (paymentStatus === 'success') {
+      console.log(`check-status token=${req.params.token.substring(0,8)}: payment #${invoice.payment_id} → SUCCESS, invoice #${invoice.id} → paid`);
+      await db.run(
+        'UPDATE payments SET status = ?, paid_at = NOW(), payment_details = ? WHERE id = ?',
+        [paymentStatus, JSON.stringify(statusResponse), invoice.payment_id]
+      );
+      await db.run('UPDATE invoices SET status = ? WHERE id = ?', ['paid', invoice.id]);
+      return res.json({ status: 'paid', already_paid: true });
+    }
+
+    if (paymentStatus === 'failed') {
+      console.log(`check-status token=${req.params.token.substring(0,8)}: payment #${invoice.payment_id} → FAILED`);
+      await db.run(
+        'UPDATE payments SET status = ?, payment_details = ? WHERE id = ?',
+        [paymentStatus, JSON.stringify(statusResponse), invoice.payment_id]
+      );
+    }
+
+    console.log(`check-status token=${req.params.token.substring(0,8)}: still ${paymentStatus}`);
+    res.json({ status: paymentStatus });
+  } catch (error) {
+    console.error('Check Midtrans status error:', error);
+    res.status(500).json({ message: 'Failed to check payment status' });
+  }
+});
+
+// PUBLIC: Check Midtrans status by order_id (for PaymentResult callback page)
+router.post('/public/check-by-order', async (req, res) => {
+  try {
+    const { order_id } = req.body;
+    if (!order_id) return res.status(400).json({ message: 'order_id required' });
+
+    const payment = await db.get(
+      `SELECT p.*, i.payment_token, i.status AS invoice_status
+       FROM payments p
+       JOIN invoices i ON i.id = p.invoice_id
+       WHERE p.transaction_id = ? AND p.payment_method IN ('midtrans', 'midtrans_snap')
+       ORDER BY p.created_at DESC LIMIT 1`,
+      [order_id]
+    );
+    if (!payment) return res.status(404).json({ message: 'Payment not found' });
+    if (payment.invoice_status === 'paid') return res.json({ status: 'paid', already_paid: true });
+
+    const settings = await db.get("SELECT * FROM payment_settings WHERE gateway = 'midtrans' LIMIT 1");
+    if (!settings || !settings.server_key) {
+      return res.json({ status: payment.invoice_status, message: 'Midtrans not configured' });
+    }
+
+    const core = new midtransClient.CoreApi({
+      isProduction: !settings.is_sandbox,
+      serverKey: settings.server_key,
+      clientKey: settings.client_key
+    });
+
+    const statusResponse = await core.transaction.status(order_id);
+    const transactionStatus = statusResponse.transaction_status;
+    const fraudStatus = statusResponse.fraud_status;
+
+    let paymentStatus = 'pending';
+    if (transactionStatus === 'capture') {
+      paymentStatus = (fraudStatus === 'accept') ? 'success' : 'pending';
+    } else if (transactionStatus === 'settlement') {
+      paymentStatus = 'success';
+    } else if (['cancel', 'deny', 'expire'].includes(transactionStatus)) {
+      paymentStatus = 'failed';
+    }
+
+    if (paymentStatus === 'success') {
+      console.log(`check-by-order: ${order_id} → SUCCESS — updating payment #${payment.id} + invoice #${payment.invoice_id}`);
+      await db.run(
+        'UPDATE payments SET status = ?, paid_at = NOW(), payment_details = ? WHERE id = ?',
+        [paymentStatus, JSON.stringify(statusResponse), payment.id]
+      );
+      await db.run('UPDATE invoices SET status = ? WHERE id = ?', ['paid', payment.invoice_id]);
+      return res.json({ status: 'paid', already_paid: true });
+    }
+
+    if (paymentStatus === 'failed') {
+      console.log(`check-by-order: ${order_id} → FAILED`);
+      await db.run(
+        'UPDATE payments SET status = ?, payment_details = ? WHERE id = ?',
+        [paymentStatus, JSON.stringify(statusResponse), payment.id]
+      );
+    }
+
+    console.log(`check-by-order: ${order_id} → ${paymentStatus}`);
+    res.json({ status: paymentStatus });
+  } catch (error) {
+    console.error('Check Midtrans by order error:', error);
+    res.status(500).json({ message: 'Failed to check payment status' });
+  }
+});
+
+// Admin: Check Midtrans status for a single payment + update DB
+router.post('/:id/check-midtrans', authenticate, async (req, res) => {
+  try {
+    const payment = await db.get('SELECT * FROM payments WHERE id = ?', [req.params.id]);
+    if (!payment) return res.status(404).json({ message: 'Payment not found' });
+    if (!payment.transaction_id) return res.status(400).json({ message: 'No transaction_id' });
+
+    if (payment.status !== 'pending') {
+      return res.json(payment);
+    }
+
+    const settings = await db.get("SELECT * FROM payment_settings WHERE gateway = 'midtrans' LIMIT 1");
+    if (!settings || !settings.server_key) {
+      return res.json(payment);
+    }
+
+    const core = new midtransClient.CoreApi({
+      isProduction: !settings.is_sandbox,
+      serverKey: settings.server_key,
+      clientKey: settings.client_key
+    });
+
+    const statusResponse = await core.transaction.status(payment.transaction_id);
+    const txnStatus = statusResponse.transaction_status;
+    const fraudStatus = statusResponse.fraud_status;
+
+    let newStatus;
+    if (txnStatus === 'capture') {
+      newStatus = (fraudStatus === 'accept') ? 'success' : null;
+    } else if (txnStatus === 'settlement') {
+      newStatus = 'success';
+    } else if (['cancel', 'deny', 'expire'].includes(txnStatus)) {
+      newStatus = 'failed';
+    }
+
+    console.log(`check-midtrans ${req.params.id}: ${payment.transaction_id} → ${txnStatus}/${fraudStatus || '-'} → ${newStatus}`);
+
+    const updates = { payment_details: JSON.stringify(statusResponse) };
+    if (newStatus === 'success') {
+      updates.status = newStatus;
+      await db.run(
+        'UPDATE payments SET status = ?, paid_at = NOW(), payment_details = ? WHERE id = ?',
+        [newStatus, updates.payment_details, payment.id]
+      );
+      await db.run('UPDATE invoices SET status = ? WHERE id = ?', ['paid', payment.invoice_id]);
+      updates.invoice_updated = true;
+    } else if (newStatus === 'failed') {
+      updates.status = newStatus;
+      await db.run(
+        'UPDATE payments SET status = ?, payment_details = ? WHERE id = ?',
+        [newStatus, updates.payment_details, payment.id]
+      );
+    } else {
+      updates.status = payment.status;
+    }
+
+    const updated = await db.get('SELECT * FROM payments WHERE id = ?', [payment.id]);
+    res.json(updated);
+  } catch (error) {
+    console.error('Check Midtrans payment error:', error.message);
+    res.status(500).json({ message: 'Gagal mengecek status Midtrans', error: error.message });
   }
 });
 
