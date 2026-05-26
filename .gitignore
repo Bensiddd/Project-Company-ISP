@@ -6,8 +6,12 @@ yarn-error.log*
 pnpm-debug.log*
 api-key.txt
 progress.txt
-.claude
-.kiro
+.claude/
+.kiro/
+.hermes/
+.openclaude/
+.claude/
+.vscode/
 
 # Production builds
 dist/
