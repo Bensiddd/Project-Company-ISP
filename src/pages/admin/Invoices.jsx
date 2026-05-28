@@ -130,6 +130,11 @@ const Invoices = () => {
     } catch (e) { console.error(e); }
   };
 
+  const handlePreviewPdf = (id) => {
+    const token = localStorage.getItem('admin_token');
+    window.open(`/api/invoices/${id}/pdf?token=${token}`, '_blank', 'noopener');
+  };
+
   const handleDownloadPdf = async (id) => {
     try {
       const res = await invoicesAPI.getPdf(id);
@@ -345,6 +350,9 @@ const Invoices = () => {
                     <button className="btn btn-ghost btn-sm" title="View Detail" onClick={() => setShowDetail(inv)}>
                       <HiEye size={15} />
                     </button>
+                    <button className="btn btn-ghost btn-sm" title="Preview PDF" onClick={() => handlePreviewPdf(inv.id)}>
+                      <HiPrinter size={15} />
+                    </button>
                     <button className="btn btn-ghost btn-sm" title="Download PDF" onClick={() => handleDownloadPdf(inv.id)}>
                       <HiDownload size={15} />
                     </button>
@@ -471,6 +479,9 @@ const Invoices = () => {
                       </button>
                     )
                   )}
+                  <button className="btn btn-secondary btn-sm" onClick={() => handlePreviewPdf(showDetail.id)}>
+                    <HiPrinter /> Preview PDF
+                  </button>
                   <button className="btn btn-secondary btn-sm" onClick={() => handleDownloadPdf(showDetail.id)}>
                     <HiDownload /> Download PDF
                   </button>

@@ -1,7 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
+import axios from 'axios';
 import { motion } from 'framer-motion';
 import './PayInvoice.css';
+
+const API = axios.create({ baseURL: '/' });
 
 const statusConfig = {
   settlement: {
@@ -53,17 +56,28 @@ const PaymentResult = () => {
   const status = searchParams.get('status') || 'settlement';
   const orderId = searchParams.get('order_id');
 
-  // Notify parent + close popup
+  // Auto-close popup: notify backend + postMessage to parent, then close self
   useEffect(() => {
-    const statusVal = searchParams.get('status') || 'settlement';
-    const orderVal = searchParams.get('order_id');
+    const status = searchParams.get('status') || 'settlement';
+    const orderId = searchParams.get('order_id');
+    const txnStatus = searchParams.get('transaction_status') || status;
+
+    // For success/capture/settlement → notify backend immediately to update DB
+    const isSuccess = ['settlement','success','capture'].includes(status);
+    if (isSuccess && orderId) {
+      API.post('/api/payments/snap-callback', {
+        order_id: orderId,
+        transaction_status: txnStatus,
+      }).catch(() => {}); // fire-and-forget
+    }
 
     if (window.opener && !window.opener.closed) {
       window.opener.postMessage({
         type: 'midtrans_payment_result',
-        status: statusVal,
-        order_id: orderVal
+        status,
+        order_id: orderId
       }, window.location.origin);
+      setTimeout(() => window.close(), isSuccess ? 1200 : 600);
     }
     setTimeout(() => window.close(), 500);
   }, []);

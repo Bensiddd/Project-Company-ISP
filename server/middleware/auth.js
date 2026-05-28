@@ -11,12 +11,19 @@ export const generateToken = (user) => {
 };
 
 export const authenticate = (req, res, next) => {
-  const header = req.headers.authorization;
-  if (!header?.startsWith('Bearer ')) {
-    return res.status(401).json({ message: 'No token provided' });
-  }
   try {
-    const token = header.split(' ')[1];
+    let token = null;
+    const header = req.headers.authorization;
+    if (header?.startsWith('Bearer ')) {
+      token = header.split(' ')[1];
+    } else if (req.query.token) {
+      token = req.query.token;
+    }
+
+    if (!token) {
+      return res.status(401).json({ message: 'No token provided' });
+    }
+
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;
     next();

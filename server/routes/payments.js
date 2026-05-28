@@ -575,6 +575,38 @@ router.post('/:id/check-midtrans', authenticate, async (req, res) => {
   }
 });
 
+// ── SNAP CALLBACK: called by PaymentResult popup → update DB immediately ──
+router.post('/snap-callback', async (req, res) => {
+  try {
+    const { order_id, transaction_status, fraud_status } = req.body;
+    if (!order_id) return res.status(400).json({ message: 'order_id required' });
+
+    const payment = await db.get('SELECT * FROM payments WHERE transaction_id = ?', [order_id]);
+    if (!payment) return res.status(404).json({ message: 'Payment not found' });
+
+    let pStatus = 'pending';
+    if (transaction_status === 'settlement' || transaction_status === 'capture') {
+      pStatus = (fraud_status === 'accept' || !fraud_status) ? 'success' : 'pending';
+    } else if (['cancel','deny','expire'].includes(transaction_status)) {
+      pStatus = 'failed';
+    }
+
+    await db.run("UPDATE payments SET status=?, paid_at=?, payment_details=JSON_SET(COALESCE(payment_details,'{}'),'$.snap_callback',?) WHERE id=?",
+      [pStatus, pStatus === 'success' ? new Date().toISOString().slice(0, 19).replace('T', ' ') : null,
+       JSON.stringify({ transaction_status, fraud_status }), payment.id]);
+
+    if (pStatus === 'success') {
+      await db.run("UPDATE invoices SET status='paid', paid_at=NOW() WHERE id=?", [payment.invoice_id]);
+    }
+
+    console.log(`Snap callback: ${order_id} → ${pStatus}`);
+    res.json({ success: true, payment_status: pStatus });
+  } catch (err) {
+    console.error('Snap callback error:', err);
+    res.status(500).json({ message: 'Callback processing failed' });
+  }
+});
+
 // Delete all payments
 router.delete('/', authenticate, async (_req, res) => {
   const count = await db.get('SELECT COUNT(*) as cnt FROM payments');
